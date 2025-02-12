@@ -4,12 +4,16 @@ let cam = {
     pos: [0, 0, 0],
     yaw: 0,
     pitch: 0,
-    sensetivity: 50,
+    sensetivity: 200,
     xv: 0,
     yv: 0,
     zv: 0,
-    speed: 2
+    speed: 0.5
 };
+
+let player = {
+    paused: false
+}
 
 let projection;
 let camera = [
@@ -53,9 +57,10 @@ function multiplyMatrix3(a, b){
 //P5 FUNCTIONS
 
 function setup(){
-    createCanvas(windowWidth, windowHeight);
+    createCanvas(windowWidth-8, windowHeight- 8);
     background("black");
     projection = createPerspectiveMatrix(Math.PI / 3, width/height, 0, 100)
+    requestPointerLock();
 }
 
 function draw(){
@@ -107,7 +112,18 @@ function getKey(){
         cam.xv = 0;
         cam.zv = 0;
     }
+
 }
+
+function doubleClicked(){
+    player.paused = !player.paused;
+    if(player.paused){
+        requestPointerLock();
+    } else {
+        exitPointerLock();
+    }
+}
+
 
 function movePlayer(){
     cam.pos[0] += cam.xv;
