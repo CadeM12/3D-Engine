@@ -1,6 +1,3 @@
-//import { Matrix, Vector } from './Scripts/tools.js';
-//import { createPerspectiveMatrix, transformPoint } from './Scripts/renderer.js';
-
 let projection;
 let zBuffer;
 let zBufferCopy;
@@ -170,7 +167,7 @@ function setup(){
     //zBufferCopy = zBuffer;
     createCanvas(windowWidth-8, windowHeight- 8);
     background("black");
-    projection = createPerspectiveMatrix(Math.PI/3, width/height, 0, 100)
+    projection = createPerspectiveMatrix(Math.PI/2, width/height, 0.1, 100)
     requestPointerLock();
     mapFaces = [];
     for (let i = 0; i < map.length; i++){
@@ -310,16 +307,16 @@ function transformFace(face, camera, projection, view, width, height){
     let z2 = transformed2[2];
     let z3 = transformed3[2];
 
-
-    const ndc1 = transformed1.map(val => val / transformed1[3]);
+    //console.log(transformed1[3], transformed2[3], transformed3[3]);
+    const ndc1 = transformed1.map(val => val / -Math.abs(transformed1[3]));
     const screenX1 = ((ndc1[0] + 1) / 2) * width;
     const screenY1 = ((1 - ndc1[1]) / 2) * height;
 
-    const ndc2 = transformed2.map(val => val / transformed2[3]);
+    const ndc2 = transformed2.map(val => val / -Math.abs(transformed2[3]));
     const screenX2 = ((ndc2[0] + 1) / 2) * width;
     const screenY2 = ((1 - ndc2[1]) / 2) * height;
 
-    const ndc3 = transformed3.map(val => val / transformed3[3]);
+    const ndc3 = transformed3.map(val => val / -Math.abs(transformed3[3]));
     const screenX3 = ((ndc3[0] + 1) / 2) * width;
     const screenY3 = ((1 - ndc3[1]) / 2) * height;
 
