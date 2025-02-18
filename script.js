@@ -4,7 +4,8 @@
 let projection;
 let zBuffer;
 let zBufferCopy;
-let facesToRender;
+let facesToRender = [];
+let mapFaces;
 
 let cam = {
     pos: [0, 0, 0, 1],
@@ -47,7 +48,19 @@ let map = [{
             [4, 0, 3], [4, 3, 7], // Left
             [3, 2, 6], [3, 6, 7], // Top
             [4, 5, 1], [4, 1, 0]]  // Bottom
-}]; 
+}
+//, {
+//    name: "rect",
+//    vertices: [[20, 10, 30, 1], [10, 10, 30, 1], [10, 5, 30, 1], [20, 5, 30, 1], //Front
+//               [20, 10, 50, 1], [10, 10, 50, 1], [10, 5, 50, 1], [20, 5, 50, 1]], //Back
+//    faces: [[0, 1, 2], [0, 2, 3], // Front
+//            [1, 5, 6], [1, 6, 2], // Right
+//            [5, 4, 7], [5, 7, 6], // Back
+//            [4, 0, 3], [4, 3, 7], // Left
+//            [3, 2, 6], [3, 6, 7], // Top
+//            [4, 5, 1], [4, 1, 0]]  // Bottom
+//}
+]; 
 
 
 //TOOLS
@@ -110,69 +123,94 @@ function barycentricCoords(x, y, v0, v1, v2) {
     return [alpha, beta, gamma];
 }
 
+function quickSortFaces(array, start, end) {
+	let pi;
+	//console.log(array);
+	if ((end - start) >= 1){
+		pi = partition(array, start, end);
+		if(start < pi - 1){
+			quickSortFaces(array, start, pi-1);
+		}
+		if(end > pi){
+			quickSortFaces(array, pi, end);
+		}
+	}
+	return array;
+}
+
+function partition(array, start, end) {
+	let p = (array[Math.floor((start + end) / 2)][0][2] + array[Math.floor((start + end) / 2)][1][2] + array[Math.floor((start + end) / 2)][2][2])/3;
+	let i = start;
+	let j = end;
+
+	while (i <= j){
+		while ((array[i][0][2] + array[i][1][2] + array[i][2][2])/3 < p){
+			i++;
+		}
+		while ((array[j][0][2] + array[j][1][2] + array[j][2][2])/3 > p){
+			j--;
+		}
+
+		if(i <= j){
+			let temp = array[i];
+			array[i] = array[j];
+			array[j] = temp;
+
+			j--;
+			i++;
+		}
+	}
+	return i;
+}
+
 //P5 FUNCTIONS
 
 function setup(){
-    zBuffer = Array(width).fill().map(() => Array(height).fill(Infinity));
-    zBufferCopy = zBuffer;
+    //zBuffer = Array(width).fill().map(() => Array(height).fill(Infinity));
+    //zBufferCopy = zBuffer;
     createCanvas(windowWidth-8, windowHeight- 8);
     background("black");
     projection = createPerspectiveMatrix(Math.PI/3, width/height, 0, 100)
     requestPointerLock();
-    facesToRender = [];
+    mapFaces = [];
     for (let i = 0; i < map.length; i++){
         for(let f = 0; f < map[i].faces.length; f++){
-            facesToRender.push(
+            mapFaces.push(
                 [map[i].vertices[map[i].faces[f][0]],
                 map[i].vertices[map[i].faces[f][1]],
                 map[i].vertices[map[i].faces[f][2]]]
             );
         }
     }
+    //console.log(quickSortFaces([[[0, 0, 3], [0, 0, 3], [0, 0, 3]], [[0, 0, 1], [0, 0, 1], [0, 0, 1]], [[0, 0, 5], [0, 0, 5], [0, 0, 5]], [[0, 0, 4], [0, 0, 4], [0, 0, 4]]], 0, 3));
 }
 
 function draw(){
-    //zBuffer = zBufferCopy;
+    //zBuffer = Array(width).fill().map(() => Array(height).fill(Infinity));
+    facesToRender = [];
     background("black");
     getCamPos();
     getKey();
     movePlayer();
     let view = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
     //loadPixels();
-    for (let i = 0; i < facesToRender.length; i++){
-        let p1 = facesToRender[i][0];
-        let p2 = facesToRender[i][1];
-        let p3 = facesToRender[i][2];
+    for (let i = 0; i < mapFaces.length; i++){
+        let p1 = mapFaces[i][0];
+        let p2 = mapFaces[i][1];
+        let p3 = mapFaces[i][2];
         let tface = transformFace([p1, p2, p3], camera, projection, view, width, height);
         if(!tface[3]){
+            facesToRender.push([tface[0], tface[1], tface[2], tface[4]]);
             //strokeWeight(1);
             //stroke(tface[4], tface[4], tface[4]);
             //fill(tface[4], tface[4], tface[4]);
             //triangle(tface[0][0], tface[0][1], tface[1][0], tface[1][1],tface[2][0], tface[2][1]);
-            drawTriangle(tface, color(tface[4], tface[4], tface[4]));
+            //drawTriangle(tface, color(tface[4], tface[4], tface[4]));
         }
     }
-    updatePixels();
-    //for(let i = 0; i < map.length; i++){
-    //    for(let f = 0; f < map[i].faces.length; f++){
-    //        let p1 = map[i].vertices[map[i].faces[f][0]];
-    //        let p2 = map[i].vertices[map[i].faces[f][1]];
-    //        let p3 = map[i].vertices[map[i].faces[f][2]];
-    //        let tface = transformFace([p1, p2, p3], camera, projection, view, width, height);
-    //        if(!tface[3]){
-    //                //stroke("white");
-    //                strokeWeight(1);
-    //                //line(tface[0][0], tface[0][1], tface[1][0], tface[1][1]);
-    //                //line(tface[2][0], tface[2][1], tface[1][0], tface[1][1]);
-    //                //line(tface[0][0], tface[0][1], tface[2][0], tface[2][1]);
-    //                stroke(tface[4], tface[4], tface[4]);
-    //                fill(tface[4], tface[4], tface[4]);
-    //                //stroke(100, 100, 100);
-    //                triangle(tface[0][0], tface[0][1], tface[1][0], tface[1][1],tface[2][0], tface[2][1]);
-    //        }
-    //    }
-    //    
-    //}
+    facesToRender = quickSortFaces(facesToRender, 0, facesToRender.length - 1);
+    //console.log(facesToRender);
+    renderTriangles();
 }
 
 //INPUT
@@ -268,6 +306,11 @@ function transformFace(face, camera, projection, view, width, height){
         return [null, null, null, true];
     }
 
+    let z1 = transformed1[2];
+    let z2 = transformed2[2];
+    let z3 = transformed3[2];
+
+
     const ndc1 = transformed1.map(val => val / transformed1[3]);
     const screenX1 = ((ndc1[0] + 1) / 2) * width;
     const screenY1 = ((1 - ndc1[1]) / 2) * height;
@@ -280,7 +323,7 @@ function transformFace(face, camera, projection, view, width, height){
     const screenX3 = ((ndc3[0] + 1) / 2) * width;
     const screenY3 = ((1 - ndc3[1]) / 2) * height;
 
-    return [[screenX1, screenY1, transformed1[2]], [screenX2, screenY2, transformed2[2]], [screenX3, screenY3, transformed3[2]], false, colour];
+    return [[screenX1, screenY1, z1], [screenX2, screenY2, z2], [screenX3, screenY3, z3], false, colour];
 }
 
 function createCameraMatrix (cameraPos, pitch, yaw){
@@ -336,25 +379,34 @@ function shouldCullFace(face, cameraPos){
     return [dotProduct(normal, viewDir) > 0, normal];
 }
 
-function drawTriangle(triangle, color) {
-    let [v0, v1, v2] = triangle; // Get triangle vertices in screen space
-
-    // Loop over pixels in bounding box
-    for (let x = Math.min(v0[0], v1[0], v2[0]); x <= Math.max(v0[0], v1[0], v2[0]); x++) {
-        for (let y = Math.min(v0[1], v1[1], v2[1]); y <= Math.max(v0[1], v1[1], v2[1]); y++) {
-            let [alpha, beta, gamma] = barycentricCoords(x, y, v0, v1, v2);
-            if (alpha >= 0 && beta >= 0 && gamma >= 0) {
-                let depth = alpha * v0[2] + beta * v1[2] + gamma * v2[2];
-
-                if(x >= 0 && y >= 0 && x <= width && y <= height){
-                    if (depth < zBuffer[Math.floor(x)][Math.floor(y)]) { // Depth test
-                        zBuffer[Math.floor(x)][Math.floor(y)] = depth;
-                        set(Math.floor(x), Math.floor(y), 'white'); // Function to set pixel color
-                        //stroke('white');
-                        //point(Math.floor(x), Math.floor(y));
-                    }
-                }
-            }
-        }
+function renderTriangles(){
+    for(let i = 0; i < facesToRender.length; i++){
+        //let colour = color(facesToRender[3], facesToRender[3], facesToRender[3]);
+        stroke(facesToRender[i][3], facesToRender[i][3], facesToRender[i][3]);
+        fill(facesToRender[i][3], facesToRender[i][3], facesToRender[i][3]);
+        //console.log(facesToRender);
+        triangle(facesToRender[i][0][0], facesToRender[i][0][1], facesToRender[i][1][0], facesToRender[i][1][1], facesToRender[i][2][0], facesToRender[i][2][1]);
     }
 }
+//function drawTriangle(triangle, color) {
+//    let [v0, v1, v2] = triangle; // Get triangle vertices in screen space
+//
+//    // Loop over pixels in bounding box
+//    for (let x = Math.min(v0[0], v1[0], v2[0]); x <= Math.max(v0[0], v1[0], v2[0]); x++) {
+//        for (let y = Math.min(v0[1], v1[1], v2[1]); y <= Math.max(v0[1], v1[1], v2[1]); y++) {
+//            let [alpha, beta, gamma] = barycentricCoords(x, y, v0, v1, v2);
+//            if (alpha >= 0 && beta >= 0 && gamma >= 0) {
+//                let depth = alpha * v0[2] + beta * v1[2] + gamma * v2[2];
+//
+//                if(x >= 0 && y >= 0 && x <= width && y <= height){
+//                    if (depth < zBuffer[Math.floor(x)][Math.floor(y)]) { // Depth test
+//                        zBuffer[Math.floor(x)][Math.floor(y)] = depth;
+//                        set(Math.floor(x), Math.floor(y), color); // Function to set pixel color
+//                        //stroke('white');
+//                        //point(Math.floor(x), Math.floor(y));
+//                    }
+//                }
+//            }
+//        }
+//    }
+//}
