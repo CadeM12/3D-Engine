@@ -66,9 +66,12 @@ function subtractVectors(a, b){
     return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
 
-function addVectors(a, b){
-    return [(a[0] + (10*b[0])), (a[1] + (10*b[1])), (a[2] + (10*b[2]))];
+function subtractVectors2D(a, b){
+    return [a[0] - b[0], a[1] - b[1]];
 }
+//function addVectors(a, b){
+//    return [(a[0] + (10*b[0])), (a[1] + (10*b[1])), (a[2] + (10*b[2]))];
+//}
 
 function normalize(v){
     let length = Math.sqrt(v[0]**2 + v[1]**2 + v[2]**2);
@@ -112,13 +115,13 @@ function multiplyMatrix3(a, b){
     return result;
 }
 
-function barycentricCoords(x, y, v0, v1, v2) {
-    let denom = (v1[1] - v2[1]) * (v0[0] - v2[0]) + (v2[0] - v1[0]) * (v0[1] - v2[1]);
-    let alpha = ((v1[1] - v2[1]) * (x - v2[0]) + (v2[0] - v1[0]) * (y - v2[1])) / denom;
-    let beta = ((v2[1] - v0[1]) * (x - v2[0]) + (v0[0] - v2[0]) * (y - v2[1])) / denom;
-    let gamma = 1 - alpha - beta;
-    return [alpha, beta, gamma];
-}
+//function barycentricCoords(x, y, v0, v1, v2) {
+//    let denom = (v1[1] - v2[1]) * (v0[0] - v2[0]) + (v2[0] - v1[0]) * (v0[1] - v2[1]);
+//    let alpha = ((v1[1] - v2[1]) * (x - v2[0]) + (v2[0] - v1[0]) * (y - v2[1])) / denom;
+//    let beta = ((v2[1] - v0[1]) * (x - v2[0]) + (v0[0] - v2[0]) * (y - v2[1])) / denom;
+//    let gamma = 1 - alpha - beta;
+//    return [alpha, beta, gamma];
+//}
 
 function quickSortFaces(array, start, end) {
 	let pi;
@@ -167,7 +170,7 @@ function setup(){
     //zBufferCopy = zBuffer;
     createCanvas(windowWidth-8, windowHeight- 8);
     background("black");
-    projection = createPerspectiveMatrix(Math.PI/2, width/height, 0.1, 100)
+    projection = createPerspectiveMatrix(Math.PI/3, width/height, 0.1, 100)
     requestPointerLock();
     mapFaces = [];
     for (let i = 0; i < map.length; i++){
@@ -189,13 +192,13 @@ function draw(){
     getCamPos();
     getKey();
     movePlayer();
-    let view = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
+    let camera = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
     //loadPixels();
     for (let i = 0; i < mapFaces.length; i++){
         let p1 = mapFaces[i][0];
         let p2 = mapFaces[i][1];
         let p3 = mapFaces[i][2];
-        let tface = transformFace([p1, p2, p3], camera, projection, view, width, height);
+        let tface = transformFace([p1, p2, p3], camera, projection, width, height);
         if(!tface[3]){
             facesToRender.push([tface[0], tface[1], tface[2], tface[4]]);
             //strokeWeight(1);
@@ -271,7 +274,7 @@ function createPerspectiveMatrix(fov, aspect, near, far){
     ];
 }
 
-function transformFace(face, camera, projection, view, width, height){
+function transformFace(face, camera, projection, width, height){
 
     let transformed1 = face[0];
     let transformed2 = face[1];
@@ -290,9 +293,9 @@ function transformFace(face, camera, projection, view, width, height){
 
     let colour = 125 - 50*lightDP;
 
-    transformed1 = multiplyVectors(transformed1, view);
-    transformed2 = multiplyVectors(transformed2, view);
-    transformed3 = multiplyVectors(transformed3, view);
+    transformed1 = multiplyVectors(transformed1, camera);
+    transformed2 = multiplyVectors(transformed2, camera);
+    transformed3 = multiplyVectors(transformed3, camera);
 
 
     transformed1 = multiplyVectors(transformed1, projection);
@@ -307,20 +310,91 @@ function transformFace(face, camera, projection, view, width, height){
     let z2 = transformed2[2];
     let z3 = transformed3[2];
 
+    
+    
     //console.log(transformed1[3], transformed2[3], transformed3[3]);
-    const ndc1 = transformed1.map(val => val / -Math.abs(transformed1[3]));
+    const ndc1 = transformed1.map(val => val / transformed1[3]);
     const screenX1 = ((ndc1[0] + 1) / 2) * width;
     const screenY1 = ((1 - ndc1[1]) / 2) * height;
-
-    const ndc2 = transformed2.map(val => val / -Math.abs(transformed2[3]));
+    
+    const ndc2 = transformed2.map(val => val / transformed2[3]);
     const screenX2 = ((ndc2[0] + 1) / 2) * width;
     const screenY2 = ((1 - ndc2[1]) / 2) * height;
-
-    const ndc3 = transformed3.map(val => val / -Math.abs(transformed3[3]));
+    
+    const ndc3 = transformed3.map(val => val / transformed3[3]);
     const screenX3 = ((ndc3[0] + 1) / 2) * width;
     const screenY3 = ((1 - ndc3[1]) / 2) * height;
 
+    if(screenX1 > width || screenX1 < 0 || screenX2 > width || screenX2 < 0 || screenX3 > width || screenX3 < 0 ){
+        let interpolatedY = interpolateY([screenX1, screenY1], [screenX2, screenY2], [screenX3, screenY3]);
+        //if(interpolatedY.length == 2){
+        //    return [[interpolatedY[0][0], interpolatedY[0][1], interpolatedY[0][2], true], [interpolatedY[1][0], interpolatedY[1][1], interpolatedY[1][2], true]];
+        //}
+        return [interpolatedY[0][0], interpolatedY[0][1], interpolatedY[0][2], true];
+    }
+
+    if(screenY1 > height || screenY1 < 0 || screenY2 > height || screenY2 < 0 || screenY3 > height || screenY3 < 0){
+        let interpolatedX = interpolateX([screenX1, screenY1], [screenX2, screenY2], [screenX3, screenY3]);
+        return [null, null, null, true];
+    }
+
     return [[screenX1, screenY1, z1], [screenX2, screenY2, z2], [screenX3, screenY3, z3], false, colour];
+}
+
+function interpolateY(p1, p2, p3){
+    let anchors = [];
+    let off = [];
+    if(onCanvas(p1[0], p1[1])){
+        anchors.push(p1);
+    } else {
+        off.push(p1);
+    }
+
+    if(onCanvas(p2[0], p2[1])){
+        anchors.push(p2);
+    } else {
+        off.push(p2);
+    }
+
+    if(onCanvas(p3[0], p3[1])){
+        anchors.push(p3);
+    } else {
+        off.push(p3);
+    }
+
+    let interpolatedYs = [];
+
+    if(off.length == 1){
+        for(let i = 0; i < anchors.length; i++){
+            let sub = subtractVectors2D(off[0], anchors[i]);
+            let side = off[0][0] < 0 ? 0 : width;
+            let interpolatedY = (sub[1])/(sub[0] * side - anchors[i][0]);
+            interpolatedYs.push([side, interpolatedY]);
+        }
+    } else {
+        for(let i = 0; i < off.length; i++){
+            let sub = subtractVectors2D(off[i], anchors[0]);
+            let side = off[i][0] < 0 ? 0 : width;
+            let interpolatedY = (sub[1])/(sub[0] * side - anchors[0][0]);
+            interpolatedYs.push([side, interpolatedY]);
+        }
+    }
+
+    interpolatedYs.concat(anchors);
+
+    if(interpolatedYs.length == 4){
+        interpolatedYs = [[interpolatedYs[0], interpolatedYs[2], interpolatedYs[3]], [interpolatedYs[1], interpolatedYs[2], interpolatedYs[3]]];
+    }
+
+    return [interpolatedYs];
+}
+
+function interpolateX(p1, p2, p3){
+
+}
+
+function onCanvas(x, y){
+    return x >= 0 && x <= width && y >= 0 && y <= height;
 }
 
 function createCameraMatrix (cameraPos, pitch, yaw){
