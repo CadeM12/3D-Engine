@@ -367,16 +367,16 @@ function interpolateY(p1, p2, p3, colour){
         for(let i = 0; i < anchors.length; i++){
             let sub = subtractVectors2D(off[0], anchors[i]);
             let side = off[0][0] < 0 ? 0 : width;
-            let interpolatedY = (sub[1])/(sub[0] / (side - anchors[i][0]))/2;
-            interpolatedYs.push([side, interpolatedY + off[0][1], off[0][2], false, colour]);
+            let interpolatedY = (sub[1])/(sub[0] / (side - anchors[i][0]));
+            interpolatedYs.push([side, interpolatedY/(side - anchors[i][0]) + off[0][1], off[0][2], false, colour]);
         }
     } else {
         for(let i = 0; i < off.length; i++){
 
             let sub = subtractVectors2D(off[i], anchors[0]);
             let side = off[i][0] < 0 ? 0 : width;
-            let interpolatedY = (sub[1])/(sub[0] / (side - anchors[0][0]))/2;
-            interpolatedYs.push([side, interpolatedY + off[i][1], off[i][2], false, colour]);
+            let interpolatedY = (sub[1])/(sub[0] / (side - anchors[0][0]));
+            interpolatedYs.push([side, interpolatedY/(side - anchors[0][0]) + off[i][1], off[i][2], false, colour]);
         }
     }
     //console.log(interpolatedYs, anchors)
