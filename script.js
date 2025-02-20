@@ -67,6 +67,7 @@ function subtractVectors(a, b){
 }
 
 function subtractVectors2D(a, b){
+    //console.log(a, b);
     return [a[0] - b[0], a[1] - b[1]];
 }
 //function addVectors(a, b){
@@ -199,13 +200,10 @@ function draw(){
         let p2 = mapFaces[i][1];
         let p3 = mapFaces[i][2];
         let tface = transformFace([p1, p2, p3], camera, projection, width, height);
-        if(!tface[3]){
-            facesToRender.push([tface[0], tface[1], tface[2], tface[4]]);
-            //strokeWeight(1);
-            //stroke(tface[4], tface[4], tface[4]);
-            //fill(tface[4], tface[4], tface[4]);
-            //triangle(tface[0][0], tface[0][1], tface[1][0], tface[1][1],tface[2][0], tface[2][1]);
-            //drawTriangle(tface, color(tface[4], tface[4], tface[4]));
+        if(!tface[0][3]){
+            for (let i = 0; i < tface.length; i++){
+                facesToRender.push([tface[i][0], tface[i][1], tface[i][2], tface[i][4]]);
+            }
         }
     }
     facesToRender = quickSortFaces(facesToRender, 0, facesToRender.length - 1);
@@ -281,7 +279,7 @@ function transformFace(face, camera, projection, width, height){
     let transformed3 = face[2];
     let cull = shouldCullFace([transformed1, transformed2, transformed3], cam.pos);
     if(cull[0]){
-        return [null, null, null, true];
+        return [[null, null, null, true]];
     }
 
     let lightDir = [0, 0, -1];
@@ -303,7 +301,7 @@ function transformFace(face, camera, projection, width, height){
     transformed3 = multiplyVectors(transformed3, projection);
 
     if((transformed1[2] > 0) && (transformed2[2] > 0) && (transformed3[2] > 0)){
-        return [null, null, null, true];
+        return [[null, null, null, true]];
     }
 
     let z1 = transformed1[2];
@@ -326,22 +324,19 @@ function transformFace(face, camera, projection, width, height){
     const screenY3 = ((1 - ndc3[1]) / 2) * height;
 
     if(screenX1 > width || screenX1 < 0 || screenX2 > width || screenX2 < 0 || screenX3 > width || screenX3 < 0 ){
-        let interpolatedY = interpolateY([screenX1, screenY1], [screenX2, screenY2], [screenX3, screenY3]);
-        //if(interpolatedY.length == 2){
-        //    return [[interpolatedY[0][0], interpolatedY[0][1], interpolatedY[0][2], true], [interpolatedY[1][0], interpolatedY[1][1], interpolatedY[1][2], true]];
-        //}
-        return [interpolatedY[0][0], interpolatedY[0][1], interpolatedY[0][2], true];
+        let interpolatedY = interpolateY([screenX1, screenY1, z1, false, colour], [screenX2, screenY2, z2, false, colour], [screenX3, screenY3, z3, false, colour], colour);
+        return interpolatedY;
     }
 
     if(screenY1 > height || screenY1 < 0 || screenY2 > height || screenY2 < 0 || screenY3 > height || screenY3 < 0){
         let interpolatedX = interpolateX([screenX1, screenY1], [screenX2, screenY2], [screenX3, screenY3]);
-        return [null, null, null, true];
+        return [[null, null, null, true]];
     }
 
-    return [[screenX1, screenY1, z1], [screenX2, screenY2, z2], [screenX3, screenY3, z3], false, colour];
+    return [[[screenX1, screenY1, z1], [screenX2, screenY2, z2], [screenX3, screenY3, z3], false, colour]];
 }
 
-function interpolateY(p1, p2, p3){
+function interpolateY(p1, p2, p3, colour){
     let anchors = [];
     let off = [];
     if(onCanvas(p1[0], p1[1])){
@@ -362,31 +357,41 @@ function interpolateY(p1, p2, p3){
         off.push(p3);
     }
 
+    if (anchors.length == 0){
+        return [[null, null, null, true]];
+    }
+
     let interpolatedYs = [];
 
     if(off.length == 1){
         for(let i = 0; i < anchors.length; i++){
             let sub = subtractVectors2D(off[0], anchors[i]);
             let side = off[0][0] < 0 ? 0 : width;
-            let interpolatedY = (sub[1])/(sub[0] * side - anchors[i][0]);
-            interpolatedYs.push([side, interpolatedY]);
+            let interpolatedY = (sub[1])/(sub[0] / (side - anchors[i][0]))/2;
+            interpolatedYs.push([side, interpolatedY + off[0][1], off[0][2], false, colour]);
         }
     } else {
         for(let i = 0; i < off.length; i++){
+
             let sub = subtractVectors2D(off[i], anchors[0]);
             let side = off[i][0] < 0 ? 0 : width;
-            let interpolatedY = (sub[1])/(sub[0] * side - anchors[0][0]);
-            interpolatedYs.push([side, interpolatedY]);
+            let interpolatedY = (sub[1])/(sub[0] / (side - anchors[0][0]))/2;
+            interpolatedYs.push([side, interpolatedY + off[i][1], off[i][2], false, colour]);
         }
     }
+    //console.log(interpolatedYs, anchors)
+    interpolatedYs.push(...anchors);
 
-    interpolatedYs.concat(anchors);
-
-    if(interpolatedYs.length == 4){
-        interpolatedYs = [[interpolatedYs[0], interpolatedYs[2], interpolatedYs[3]], [interpolatedYs[1], interpolatedYs[2], interpolatedYs[3]]];
+    //console.log(interpolatedYs);
+    let faces = [];
+    if(anchors.length == 2){
+        faces.push([interpolatedYs[0], interpolatedYs[2], interpolatedYs[3], false, colour]); 
+        faces.push([interpolatedYs[1], interpolatedYs[2], interpolatedYs[3], false, colour]);
+    } else {
+        faces.push([interpolatedYs[0], interpolatedYs[1], interpolatedYs[2], false, colour]);
     }
-
-    return [interpolatedYs];
+    //console.log(faces);
+    return faces;
 }
 
 function interpolateX(p1, p2, p3){
