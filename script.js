@@ -45,6 +45,10 @@ let map = [{
             [4, 0, 3], [4, 3, 7], // Left
             [3, 2, 6], [3, 6, 7], // Top
             [4, 5, 1], [4, 1, 0]]  // Bottom
+}, {
+    name: "pyramid",
+    vertices: [[0, -10, -40, 1], [-10, 10, -30, 1], [10, 10, -30, 1], [10, 10, -50, 1], [-10, 10, -50, 1]],
+    faces: [[0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1], [1, 2, 3], [1, 3, 4]]
 }
 //, {
 //    name: "rect",
@@ -323,7 +327,11 @@ function transformFace(face, camera, projection, width, height){
     const screenX3 = ((ndc3[0] + 1) / 2) * width;
     const screenY3 = ((1 - ndc3[1]) / 2) * height;
 
-    if(screenX1 > width || screenX1 < 0 || screenX2 > width || screenX2 < 0 || screenX3 > width || screenX3 < 0 ){
+    if((screenX1 > width || screenX1 < 0 || screenX2 > width || screenX2 < 0 || screenX3 > width || screenX3 < 0) && (screenY1 > height || screenY1 < 0 || screenY2 > height || screenY2 < 0 || screenY3 > height || screenY3 < 0)){
+        let interpolated = interpolate([screenX1, screenY1, z1, false, colour], [screenX2, screenY2, z2, false, colour], [screenX3, screenY3, z3, false, colour], colour);
+    }
+
+    if(screenX1 > width || screenX1 < 0 || screenX2 > width || screenX2 < 0 || screenX3 > width || screenX3 < 0){
         let interpolatedY = interpolateY([screenX1, screenY1, z1, false, colour], [screenX2, screenY2, z2, false, colour], [screenX3, screenY3, z3, false, colour], colour);
         return interpolatedY;
     }
@@ -334,6 +342,86 @@ function transformFace(face, camera, projection, width, height){
     }
 
     return [[[screenX1, screenY1, z1], [screenX2, screenY2, z2], [screenX3, screenY3, z3], false, colour]];
+}
+
+function interpolate(p1, p2, p3, colour){
+    let anchors = [];
+    let off = [];
+    if(onCanvas(p1[0], p1[1])){
+        anchors.push(p1);
+    } else {
+        off.push(p1);
+    }
+
+    if(onCanvas(p2[0], p2[1])){
+        anchors.push(p2);
+    } else {
+        off.push(p2);
+    }
+
+    if(onCanvas(p3[0], p3[1])){
+        anchors.push(p3);
+    } else {
+        off.push(p3);
+    }
+
+    if (anchors.length == 0){
+        return [[null, null, null, true]];
+    }
+
+    let interpolated = [];
+
+    if(off.length == 1){
+        for(let i = 0; i < anchors.length; i++){
+            let sub = subtractVectors2D(off[0], anchors[i]);
+            let sideY = off[0][1] < 0 ? 0 : height;
+            let sideX = off[0][0] < 0 ? 0 : width;
+            if(off[0][0] > 0 && off[0][0] < width){
+                let interpolatedY = ((sub[1])/(sub[0] / (sideY - anchors[i][1])));
+                interpolated.push([sideX, interpolatedY + anchors[i][1], off[0][2], false, colour]);
+            } else if (off[0][1] > 0 && off[0][1] < height){
+                let interpolatedX = ((sub[0])/(sub[1] / (sideX - anchors[i][0])));
+                interpolated.push([interpolatedX + anchors[i][0], sideY, off[0][2], false, colour]);
+            } else {
+                interpolated.push([sideX, sideY, off[0][2], false, colour]);
+            }
+
+
+            
+        }
+    } else {
+        for(let i = 0; i < off.length; i++){
+            console.log(off[i], anchors);
+            let sub = subtractVectors2D(off[i], anchors[0]);
+            let sideY = off[i][1] < 0 ? 0 : height;
+            let sideX = off[i][0] < 0 ? 0 : width;
+            if(off[i][0] > 0 && off[i][0] < width){
+                let interpolatedY = ((sub[1])/(sub[0] / (sideY - anchors[0][1])));
+                interpolated.push([sideX, interpolatedY + anchors[0][1], off[i][2], false, colour]);
+            } else if (off[i][1] > 0 && off[i][1] < height){
+                let interpolatedX = ((sub[0])/(sub[1] / (sideX - anchors[0][0])));
+                interpolated.push([interpolatedX + anchors[0][0], sideY, off[i][2], false, colour]);
+            } else {
+                interpolated.push([sideX, sideY, off[0][2], false, colour]);
+            }
+            //let interpolatedX = ((sub[0])/(sub[1] / (sideX - anchors[0][0])));
+            //let interpolatedY = ((sub[1])/(sub[0] / (sideY - anchors[0][1])));
+            //interpolated.push([interpolatedX + anchors[0][0], sideY, off[i][2], false, colour]);
+            //interpolated.push([sideX, interpolatedY + anchors[0][1], off[i][2], false, colour]);
+        }
+    }
+
+    interpolated.push(...anchors);
+
+    let faces = [];
+    if(anchors.length == 2){
+        faces.push([interpolated[0], interpolated[2], interpolated[3], false, colour]); 
+        faces.push([interpolated[0], interpolated[1], interpolated[3], false, colour]);
+    } else {
+        faces.push([interpolated[0], interpolated[1], interpolated[2], false, colour]);
+    }
+
+    return faces;
 }
 
 function interpolateY(p1, p2, p3, colour){
@@ -362,7 +450,7 @@ function interpolateY(p1, p2, p3, colour){
     }
 
     let interpolatedYs = [];
-
+    
     if(off.length == 1){
         for(let i = 0; i < anchors.length; i++){
             let sub = subtractVectors2D(off[0], anchors[i]);
