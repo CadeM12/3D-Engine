@@ -292,18 +292,23 @@ function transformFace(face, camera, projection, width, height){
     let z2 = transformed2[2];
     let z3 = transformed3[2];
 
-    
-    
+    function safeNDCTransform(transformed) {
+        const w = transformed[3];
+        if (Math.abs(w) < 1e-6) { 
+            return [0, 0, 0, 1];
+        }
+        return transformed.map(val => val / w);
+    }
     //console.log(transformed1[3], transformed2[3], transformed3[3]);
-    const ndc1 = transformed1.map(val => val / transformed1[3]);
+    const ndc1 = safeNDCTransform(transformed1);
     const screenX1 = ((ndc1[0] + 1) / 2) * width;
     const screenY1 = ((1 - ndc1[1]) / 2) * height;
     
-    const ndc2 = transformed2.map(val => val / transformed2[3]);
+    const ndc2 = safeNDCTransform(transformed2);
     const screenX2 = ((ndc2[0] + 1) / 2) * width;
     const screenY2 = ((1 - ndc2[1]) / 2) * height;
     
-    const ndc3 = transformed3.map(val => val / transformed3[3]);
+    const ndc3 = safeNDCTransform(transformed3);
     const screenX3 = ((ndc3[0] + 1) / 2) * width;
     const screenY3 = ((1 - ndc3[1]) / 2) * height;
 
@@ -322,7 +327,7 @@ function interpolate(p1, p2, p3, colour){
         anchors.push(p1);
     } else {
         off.push(p1);
-    }
+    }  
 
     if(onCanvas(p2[0], p2[1])){
         anchors.push(p2);
@@ -456,7 +461,7 @@ function renderTriangles(){
     for(let i = 0; i < facesToRender.length; i++){
         //let colour = color(facesToRender[3], facesToRender[3], facesToRender[3]);
         stroke(facesToRender[i][3], facesToRender[i][3], facesToRender[i][3]);
-        stroke("black");
+        //stroke("black");
         fill(facesToRender[i][3], facesToRender[i][3], facesToRender[i][3]);
         //console.log(facesToRender);
         triangle(facesToRender[i][0][0], facesToRender[i][0][1], facesToRender[i][1][0], facesToRender[i][1][1], facesToRender[i][2][0], facesToRender[i][2][1]);
