@@ -349,9 +349,9 @@ function interpolate(p1, p2, p3, colour){
             let sideX = off[0][0] < 0 ? 0 : width;
             let interpolatedY = ((sub[1])/(sub[0] / (sideX - anchors[i][0])));
             let interpolatedX = ((sub[0])/(sub[1] / (sideY - anchors[i][1])));
-            if(((off[0][0] > 0 && off[0][0] < width)) || (Math.abs(off[0][0] - sideX) > Math.abs(off[0][1] - sideY))){
+            if(((off[0][0] > 0 && off[0][0] < width) && !(off[0][1] > 0 && off[0][1] < height)) || ((Math.abs(off[0][0] - sideX) > Math.abs(off[0][1] - sideY)) && !(off[0][1] > 0 && off[0][1] < height))){
                 interpolated.push([interpolatedX + anchors[i][0], sideY, off[0][2], false, colour]);
-            } else if (((off[0][1] > 0 && off[0][1] < height)) || (Math.abs(off[0][0] - sideX) < Math.abs(off[0][1] - sideY))){
+            } else if (((off[0][1] > 0 && off[0][1] < height) && !(off[0][0] > 0 && off[0][0] < width)) || ((Math.abs(off[0][0] - sideX) < Math.abs(off[0][1] - sideY)) && !(off[0][0] > 0 && off[0][0] < width)) ){
                 interpolated.push([sideX, interpolatedY + anchors[i][1], off[0][2], false, colour]);
             } 
             else {
@@ -363,15 +363,14 @@ function interpolate(p1, p2, p3, colour){
         }
     } else {
         for(let i = 0; i < off.length; i++){
-            console.log(off[i], anchors);
             let sub = subtractVectors2D(off[i], anchors[0]);
             let sideY = off[i][1] < 0 ? 0 : height;
             let sideX = off[i][0] < 0 ? 0 : width;
             let interpolatedY = ((sub[1])/(sub[0] / (sideX - anchors[0][0])));
             let interpolatedX = ((sub[0])/(sub[1] / (sideY - anchors[0][1])));
-            if(((off[i][0] > 0 && off[i][0] < width)) || (Math.abs(off[i][0] - sideX) > Math.abs(off[i][1] - sideY))){
+            if(((off[i][0] > 0 && off[i][0] < width) && !(off[i][1] > 0 && off[i][1] < height)) || ((Math.abs(off[i][0] - sideX) > Math.abs(off[i][1] - sideY)) && !(off[i][1] > 0 && off[i][1] < height))){
                 interpolated.push([interpolatedX + anchors[0][0], sideY, off[i][2], false, colour]);
-            } else if (((off[i][1] > 0 && off[i][1] < height)) || (Math.abs(off[i][0] - sideX) < Math.abs(off[i][1] - sideY))){
+            } else if (((off[i][1] > 0 && off[i][1] < height) && !(off[i][0] > 0 && off[i][0] < width)) || ((Math.abs(off[i][0] - sideX) < Math.abs(off[i][1] - sideY)) && !(off[i][0] > 0 && off[i][0] < width)) ){
                 interpolated.push([sideX, interpolatedY + anchors[0][1], off[i][2], false, colour]);
             } else {
                 interpolated.push([sideX, sideY, off[0][2], false, colour]);
@@ -457,7 +456,7 @@ function renderTriangles(){
     for(let i = 0; i < facesToRender.length; i++){
         //let colour = color(facesToRender[3], facesToRender[3], facesToRender[3]);
         stroke(facesToRender[i][3], facesToRender[i][3], facesToRender[i][3]);
-        //stroke("black");
+        stroke("black");
         fill(facesToRender[i][3], facesToRender[i][3], facesToRender[i][3]);
         //console.log(facesToRender);
         triangle(facesToRender[i][0][0], facesToRender[i][0][1], facesToRender[i][1][0], facesToRender[i][1][1], facesToRender[i][2][0], facesToRender[i][2][1]);
