@@ -11,7 +11,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 
-let fNear = 0.1;
+let fNear = 1;
 let fFar = 100;
 let fFov = Math.PI/3;
 let mapFaces = [];
@@ -268,7 +268,6 @@ function setup(){
     background('black');
     aspect = width/height;
     projMat = createPerspectiveMatrix(fFov, aspect, fNear, fFar);
-
     for (let i = 0; i < map.length; i++){
         for(let f = 0; f < map[i].faces.length; f++){
             mapFaces.push(
@@ -281,8 +280,8 @@ function setup(){
 }
 
 function draw(){
-    facesToRender = [];
     background('black');
+    facesToRender = [];
     getCamPos();
     getKey();
     movePlayer();
@@ -360,7 +359,7 @@ function transformFace(face, camera, projection, width, height){
     transformed2 = multiplyVecMat(transformed2, camera);
     transformed3 = multiplyVecMat(transformed3, camera);
 
-    let clippedTriangles = clipTriangleAgainstPlane([0, 0, 0.1], [0, 0, 1], [transformed1, transformed2, transformed3]);
+    let clippedTriangles = clipTriangleAgainstPlane([0, 0, fNear], [0, 0, 1], [transformed1, transformed2, transformed3]);
 
     for (let i = 0; i < clippedTriangles[1]; i++){
         let clipped = clippedTriangles[0][i];
@@ -369,9 +368,9 @@ function transformFace(face, camera, projection, width, height){
         transformed2 = multiplyVecMat(clipped[1], projection);
         transformed3 = multiplyVecMat(clipped[2], projection);
         
-        let z1 = transformed1[2];
-        let z2 = transformed2[2];
-        let z3 = transformed3[2];
+        let z1 = transformed1[2] / transformed1[3];
+        let z2 = transformed2[2] / transformed2[3];
+        let z3 = transformed3[2] / transformed3[3];
         
         const ndc1 = transformed1.map(val => val / transformed1[3]);
         const screenX1 = ((ndc1[0] + 1) / 2) * width;
@@ -403,6 +402,7 @@ function shouldCullFace(face){
 
 function renderTriangles() {
     for (let i = 0; i < facesToRender.length; i++){
+
         let face = facesToRender[i];
         stroke(face[3], face[3], face[3]);
         fill(face[3], face[3], face[3]);
