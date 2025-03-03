@@ -31,9 +31,7 @@ let cam = {
     yaw: 0,
     pitch: 0,
     sensetivity: 100,
-    xv: 0,
-    yv: 0,
-    zv: 0,
+    vel: [0, 0, 0],
     speed: 0.5
 };
 
@@ -78,7 +76,7 @@ function subtractVector2(a, b){
 }
 
 function addVector3(a, b){
-    return [a[0] + b[0], a[1] + b[1], a[2] + b[2], 1];
+    return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 }
 
 function normalize(v){
@@ -131,15 +129,15 @@ function vecIntersectsPlane(planePoint, planeNormal, lineStart, lineEnd){
     let t = (-planeD - ad) / (bd - ad);
     let line = subtractVector3(lineEnd, lineStart);
     let lineToIntersect = [line[0] * t, line[1] * t, line[2] * t];
-    return addVector3(lineStart, lineToIntersect);
+    return [...addVector3(lineStart, lineToIntersect), 1];
+}
+
+function distance(p, planePoint, planeNormal){
+    return dotProduct(planeNormal, p) - dotProduct(planeNormal, planePoint);
 }
 
 function clipTriangleAgainstPlane(planePoint, planeNormal, inTri){
     planeNormal = normalize(planeNormal);
-
-    function dist(p){
-        return dotProduct(planeNormal, p) - dotProduct(planeNormal, planePoint);
-    }
 
     let insidePoints = [];
     let outsidePoints = [];
@@ -147,9 +145,9 @@ function clipTriangleAgainstPlane(planePoint, planeNormal, inTri){
     let insidePointCount = 0;
     let outsidePointCount = 0;
 
-    let d0 = dist(inTri[0]);
-    let d1 = dist(inTri[1]);
-    let d2 = dist(inTri[2]);
+    let d0 = distance(inTri[0], planePoint, planeNormal);
+    let d1 = distance(inTri[1], planePoint, planeNormal);
+    let d2 = distance(inTri[2], planePoint, planeNormal);
 
     if(d0 >= 0) {insidePoints.push(inTri[0]); insidePointCount++;}
     else {outsidePoints.push(inTri[0]); outsidePointCount++;}
@@ -265,7 +263,6 @@ function createCameraMatrix (cameraPos, pitch, yaw){
 
 function setup(){
     createCanvas(windowWidth - 20, windowHeight - 20);
-    background('black');
     aspect = width/height;
     projMat = createPerspectiveMatrix(fFov, aspect, fNear, fFar);
     for (let i = 0; i < map.length; i++){
@@ -280,10 +277,11 @@ function setup(){
 }
 
 function draw(){
-    background('black');
+    background('skyBlue');    
     facesToRender = [];
     getCamPos();
     getKey();
+    checkCollisions();
     movePlayer();
     camera = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
     for (let i = 0; i < mapFaces.length; i++){
@@ -294,33 +292,39 @@ function draw(){
 }
 
 function getKey(){
-    cam.xv = 0;
-    cam.zv = 0;
-    cam.yv = 0;
+    cam.vel[0] = 0;
+    cam.vel[1] = 0;
+    cam.vel[2] = 0;
 
     //W && S
     if(keyIsDown(87) && !keyIsDown(83)){
-        cam.xv += cam.speed * Math.sin(cam.yaw);
-        cam.zv += cam.speed * Math.cos(cam.yaw);
+        cam.vel[0] += Math.sin(cam.yaw);
+        cam.vel[2] += Math.cos(cam.yaw);
     } else if(keyIsDown(83) && !keyIsDown(87)){
-        cam.xv += -cam.speed * Math.sin(cam.yaw);
-        cam.zv += -cam.speed * Math.cos(cam.yaw);
+        cam.vel[0] -= Math.sin(cam.yaw);
+        cam.vel[2] -= Math.cos(cam.yaw);
     }
 
     //A && D
     if(keyIsDown(65) && !keyIsDown(68)){
-        cam.zv += -cam.speed * Math.sin(cam.yaw);
-        cam.xv += cam.speed * Math.cos(cam.yaw);
+        cam.vel[2] -= Math.sin(cam.yaw);
+        cam.vel[0] += Math.cos(cam.yaw);
     } else if(keyIsDown(68) && !keyIsDown(65)){
-        cam.zv += cam.speed * Math.sin(cam.yaw);
-        cam.xv += -cam.speed * Math.cos(cam.yaw);
+        cam.vel[2] += Math.sin(cam.yaw);
+        cam.vel[0] -= Math.cos(cam.yaw);
     }
 
     if(keyIsDown(32)){
-        cam.yv -= cam.speed;
-    } else if(keyIsDown(16)){
-        cam.yv += cam.speed;
+        cam.vel[1] -= 1;
     }
+    if(keyIsDown(16)){
+        cam.vel[1] += 1;
+    }
+
+    cam.vel = normalize(cam.vel);
+    cam.vel[0] *= cam.speed;
+    cam.vel[1] *= cam.speed;
+    cam.vel[2] *= cam.speed;
 }
 
 function getCamPos(){
@@ -331,9 +335,44 @@ function getCamPos(){
 }
 
 function movePlayer(){
-    cam.pos[0] += cam.xv;
-    cam.pos[2] += cam.zv;
-    cam.pos[1] += cam.yv;
+    cam.pos[0] += cam.vel[0];
+    cam.pos[2] += cam.vel[2];
+    cam.pos[1] += cam.vel[1];
+}
+
+function checkCollisions(){
+    for (let i = 0; i < map.length; i++){
+        let toPlanes = 0;
+        let crossingNormal = [0, 0, 0];
+        for (let face = 0; face < map[i].faces.length; face++){
+            let plane = [map[i].vertices[map[i].faces[face][0]], map[i].vertices[map[i].faces[face][1]], map[i].vertices[map[i].faces[face][2]]];
+            let planeNormal = normalize(crossProduct(subtractVector3(plane[1], plane[0]), subtractVector3(plane[2], plane[0])));
+            let planePoint = plane[0];
+            let point = addVector3(cam.pos, cam.vel);
+
+            let d = distance(point, planePoint, planeNormal);
+
+            //if(d0 > 0 || d1 > 0 || d2 > 0){
+            //    break;
+            //} else {
+            //    toPlanes.push([plane, planeNormal]);
+            //    breakLoop = true;
+            //    cam.vel = [0, 0, 0];
+            //}
+
+            if(d >= -2){
+                if(distance(cam.pos, planePoint, planeNormal) < -2){
+                    crossingNormal = planeNormal;
+                }
+                toPlanes++;
+                //console.log(toPlanes);
+            }
+        }
+        if(toPlanes == map[i].faces.length){
+            cam.vel = subtractVector3(cam.vel, crossingNormal.map(val => val * cam.speed));
+
+        }
+    }
 }
 
 function transformFace(face, camera, projection, width, height){
