@@ -1,3 +1,4 @@
+//PAUSE GAME WITH Q
 let paused = false;
 document.addEventListener("keydown", (e) => {
     if (e.key === "q") {
@@ -10,6 +11,7 @@ document.addEventListener("keydown", (e) => {
     }
 });
 
+//VARIABLE INITIALIZATION
 let gravity = 0.1;
 let fNear = 1;
 let fFar = 100;
@@ -36,6 +38,7 @@ let cam = {
     grounded: true
 };
 
+//MAP
 let map = [{
     mesh: "cube",
     color: [120, 108, 155],
@@ -69,7 +72,18 @@ let map = [{
             [4, 0, 3], [4, 3, 7], // Left
             [3, 2, 6], [3, 6, 7], // Top
             [4, 5, 1], [4, 1, 0]]  // Bottom
+}, {
+    name: "slant",
+    color: [0, 150, 60],
+    vertices: [[-30, 10, -40, 1], [-40, 10, -40, 1], [-40, 0, -40, 1], [-30, 0, -40, 1], 
+               [-30, 10, -10, 1], [-40, 10, -10, 1]],
+    faces: [[0, 1, 2], [0, 2, 3], // Front
+            [4, 5, 1], [1, 5, 2], // Right
+            [4, 5, 0], [4, 0, 3], // Top
+            [3, 2, 4], [2, 5, 4]] // Bottom
 }]; 
+
+//TOOLS
 
 function subtractVector3(a, b){
     return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -270,9 +284,25 @@ function createCameraMatrix (cameraPos, pitch, yaw){
         [Rt[2][0], Rt[2][1], Rt[2][2], tz],
         [0,        0,        0,        1]
     ];
-
+    
     return viewMatrix;
 }
+
+function shouldCullFace(face){
+    let [v1, v2, v3] = face;
+
+    let edge1 = subtractVector3(v2, v1);
+    let edge2 = subtractVector3(v3, v1);
+    let normal = normalize(crossProduct(edge1, edge2));
+
+    let viewDir = normalize(subtractVector3(cam.pos, v1));
+
+    return [dotProduct(normal, viewDir) > 0, normal];
+}
+
+//END TOOLS
+
+//P5 FUNCTIONS
 
 function setup(){
     createCanvas(windowWidth - 20, windowHeight - 20);
@@ -304,6 +334,8 @@ function draw(){
     renderTriangles();
 }
 
+//GAME FUNCTIONS
+
 function getKey(){
     cam.vel[0] = 0;
     cam.vel[1] += gravity;
@@ -330,6 +362,8 @@ function getKey(){
     if(keyIsDown(32) && cam.grounded){
         cam.vel[1] = -2;
     }
+
+    //SHIFT
     //if(keyIsDown(16)){
     //    cam.vel[1] += 1;
     //}
@@ -355,29 +389,49 @@ function movePlayer(){
 }
 
 function checkCollisions(){
+    let isGrounded = false;
     for (let i = 0; i < map.length; i++){
         let toPlanes = 0;
         let crossingNormal = [0, 0, 0];
+
         for (let face = 0; face < map[i].faces.length; face++){
-            let plane = [map[i].vertices[map[i].faces[face][0]], map[i].vertices[map[i].faces[face][1]], map[i].vertices[map[i].faces[face][2]]];
-            let planeNormal = normalize(crossProduct(subtractVector3(plane[1], plane[0]), subtractVector3(plane[2], plane[0])));
+            let plane = [
+                map[i].vertices[map[i].faces[face][0]], 
+                map[i].vertices[map[i].faces[face][1]], 
+                map[i].vertices[map[i].faces[face][2]]
+            ];
+            
+            let planeNormal = normalize(crossProduct(
+                subtractVector3(plane[1], plane[0]), 
+                subtractVector3(plane[2], plane[0])
+            ));
+            
             let planePoint = plane[0];
-            let point = addVector3(cam.pos, cam.vel);
+            let footPosition = [cam.pos[0], cam.pos[1] + 7, cam.pos[2]];
+            let point = addVector3([cam.pos[0], cam.pos[1] + 5, cam.pos[2]], cam.vel);
 
             let d = distance(point, planePoint, planeNormal);
             if(d >= -2){
-                if(distance(cam.pos, planePoint, planeNormal) < -2){
+                if(distance([cam.pos[0], cam.pos[1] + 5, cam.pos[2]], planePoint, planeNormal) < -2){
                     crossingNormal = planeNormal;
                 }
                 toPlanes++;
             }
         }
-        if(toPlanes == map[i].faces.length){
 
+        if(toPlanes == map[i].faces.length){
             let normalVelocity = dotProduct(cam.vel, crossingNormal);
             cam.vel = subtractVector3(cam.vel, crossingNormal.map(val => val * normalVelocity));
-
+            if(crossingNormal[1] > 0.7){        
+                isGrounded = true;
+            }
         }
+    }
+    if(isGrounded){
+        cam.vel[1] = 0;
+        cam.grounded = true;
+    } else {
+        cam.grounded = false;
     }
 }
 
@@ -435,17 +489,6 @@ function transformFace(face, camera, projection, width, height, color){
     }
 }
 
-function shouldCullFace(face){
-    let [v1, v2, v3] = face;
-
-    let edge1 = subtractVector3(v2, v1);
-    let edge2 = subtractVector3(v3, v1);
-    let normal = normalize(crossProduct(edge1, edge2));
-
-    let viewDir = normalize(subtractVector3(cam.pos, v1));
-
-    return [dotProduct(normal, viewDir) > 0, normal];
-}
 
 function renderTriangles() {
     for (let i = 0; i < facesToRender.length; i++){
@@ -453,10 +496,6 @@ function renderTriangles() {
         let face = facesToRender[i];
         stroke(face[3], face[3], face[3]);
         fill(face[3], face[3], face[3]);
-        //console.log(face)
-        //line(face[0][0], face[0][1], face[1][0], face[1][1]);
-        //line(face[1][0], face[1][1], face[2][0], face[2][1]);
-        //line(face[2][0], face[2][1], face[0][0], face[0][1]);
         triangle(face[0][0], face[0][1], face[1][0], face[1][1], face[2][0], face[2][1]);
     }
 }
