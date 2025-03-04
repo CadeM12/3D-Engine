@@ -10,7 +10,7 @@ document.addEventListener("keydown", (e) => {
     }
 });
 
-
+let gravity = 0.1;
 let fNear = 1;
 let fFar = 100;
 let fFov = Math.PI/3;
@@ -32,11 +32,13 @@ let cam = {
     pitch: 0,
     sensetivity: 100,
     vel: [0, 0, 0],
-    speed: 0.5
+    speed: 0.5,
+    grounded: true
 };
 
 let map = [{
     mesh: "cube",
+    color: [120, 108, 155],
     vertices: [[10, 10, 30, 1], [-10, 10, 30, 1], [-10, -10, 30, 1], [10, -10, 30, 1], //Front
                [10, 10, 50, 1], [-10, 10, 50, 1], [-10, -10, 50, 1], [10, -10, 50, 1]], //Back
     faces: [[0, 1, 2], [0, 2, 3], // Front
@@ -47,6 +49,7 @@ let map = [{
             [4, 5, 1], [4, 1, 0]] // Bottom
 }, {
     name: "cube",
+    color: [2, 7, 93],
     vertices: [[30, 10, 30, 1], [20, 10, 30, 1], [20, -10, 30, 1], [30, -10, 30, 1], //Front
                [30, 10, 50, 1], [20, 10, 50, 1], [20, -10, 50, 1], [30, -10, 50, 1]], //Back
     faces: [[0, 1, 2], [0, 2, 3], // Front
@@ -57,6 +60,7 @@ let map = [{
             [4, 5, 1], [4, 1, 0]]  // Bottom
 }, {
     name: "ground",
+    color: [36, 36, 36],
     vertices: [[100, 20, -100, 1], [-100, 20, -100, 1], [-100, 10, -100, 1], [100, 10, -100, 1], //Front
                [100, 20, 100, 1], [-100, 20, 100, 1], [-100, 10, 100, 1], [100, 10, 100, 1]], //Back
     faces: [[0, 1, 2], [0, 2, 3], // Front
@@ -75,6 +79,10 @@ function subtractVector2(a, b){
     return [a[0] - b[0], a[1] - b[1]];
 }
 
+function addColor(a, b){
+    return [a[0] + b[0] > 255 ? 255: a[0] + b[0], a[1] + b[1] > 255 ? 255: a[1] + b[1], a[2] + b[2] > 255 ? 255: a[2] + b[2]];
+}
+
 function addVector3(a, b){
     return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 }
@@ -82,6 +90,11 @@ function addVector3(a, b){
 function normalize(v){
     let length = Math.sqrt(v[0]**2 + v[1]**2 + v[2]**2);
     return length === 0 ? [0, 0, 0] : [v[0] / length, v[1] / length, v[2] / length];
+}
+
+function normalize2D(v){
+    let length = Math.sqrt(v[0]**2 + v[1]**2);
+    return length === 0 ? [0, 0] : [v[0] / length, v[1] / length];
 }
 
 function crossProduct(a, b){
@@ -270,7 +283,7 @@ function setup(){
             mapFaces.push(
                 [map[i].vertices[map[i].faces[f][0]],
                 map[i].vertices[map[i].faces[f][1]],
-                map[i].vertices[map[i].faces[f][2]]]
+                map[i].vertices[map[i].faces[f][2]], map[i].color]
             );
         }
     }
@@ -285,7 +298,7 @@ function draw(){
     movePlayer();
     camera = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
     for (let i = 0; i < mapFaces.length; i++){
-        transformFace([mapFaces[i][0], mapFaces[i][1], mapFaces[i][2]], camera, projMat, width, height);
+        transformFace([mapFaces[i][0], mapFaces[i][1], mapFaces[i][2]], camera, projMat, width, height, mapFaces[i][3]);
     }
     quickSortFaces(facesToRender, 0, facesToRender.length - 1);
     renderTriangles();
@@ -293,7 +306,7 @@ function draw(){
 
 function getKey(){
     cam.vel[0] = 0;
-    cam.vel[1] = 0;
+    cam.vel[1] += gravity;
     cam.vel[2] = 0;
 
     //W && S
@@ -313,17 +326,18 @@ function getKey(){
         cam.vel[2] += Math.sin(cam.yaw);
         cam.vel[0] -= Math.cos(cam.yaw);
     }
-
-    if(keyIsDown(32)){
-        cam.vel[1] -= 1;
+    //SPACE
+    if(keyIsDown(32) && cam.grounded){
+        cam.vel[1] = -2;
     }
-    if(keyIsDown(16)){
-        cam.vel[1] += 1;
-    }
+    //if(keyIsDown(16)){
+    //    cam.vel[1] += 1;
+    //}
 
-    cam.vel = normalize(cam.vel);
+    let normalizedVel = normalize2D([cam.vel[0], cam.vel[2]]);
+    cam.vel[0] = normalizedVel[0];
+    cam.vel[2] = normalizedVel[1];
     cam.vel[0] *= cam.speed;
-    cam.vel[1] *= cam.speed;
     cam.vel[2] *= cam.speed;
 }
 
@@ -351,31 +365,23 @@ function checkCollisions(){
             let point = addVector3(cam.pos, cam.vel);
 
             let d = distance(point, planePoint, planeNormal);
-
-            //if(d0 > 0 || d1 > 0 || d2 > 0){
-            //    break;
-            //} else {
-            //    toPlanes.push([plane, planeNormal]);
-            //    breakLoop = true;
-            //    cam.vel = [0, 0, 0];
-            //}
-
             if(d >= -2){
                 if(distance(cam.pos, planePoint, planeNormal) < -2){
                     crossingNormal = planeNormal;
                 }
                 toPlanes++;
-                //console.log(toPlanes);
             }
         }
         if(toPlanes == map[i].faces.length){
-            cam.vel = subtractVector3(cam.vel, crossingNormal.map(val => val * cam.speed));
+
+            let normalVelocity = dotProduct(cam.vel, crossingNormal);
+            cam.vel = subtractVector3(cam.vel, crossingNormal.map(val => val * normalVelocity));
 
         }
     }
 }
 
-function transformFace(face, camera, projection, width, height){
+function transformFace(face, camera, projection, width, height, color){
     let transformed1 = face[0];
     let transformed2 = face[1];
     let transformed3 = face[2];
@@ -392,7 +398,9 @@ function transformFace(face, camera, projection, width, height){
 
     let lightDP = dotProduct(lightDir, normal);
 
-    let colour = 125 - 50*lightDP;
+    let lighting = -70*lightDP;
+
+    color = addColor(color, [lighting, lighting, lighting]);
     
     transformed1 = multiplyVecMat(transformed1, camera);
     transformed2 = multiplyVecMat(transformed2, camera);
@@ -423,7 +431,7 @@ function transformFace(face, camera, projection, width, height){
         const screenX3 = ((ndc3[0] + 1) / 2) * width;
         const screenY3 = ((1 - ndc3[1]) / 2) * height;
 
-        facesToRender.push([[screenX1, screenY1, z1], [screenX2, screenY2, z2], [screenX3, screenY3, z3], colour]);
+        facesToRender.push([[screenX1, screenY1, z1], [screenX2, screenY2, z2], [screenX3, screenY3, z3], color]);
     }
 }
 
