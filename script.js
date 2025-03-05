@@ -389,11 +389,11 @@ function movePlayer(){
 }
 
 function checkCollisions(){
+    const COLLISION_OFFSET = 5; // Consistent height offset
+    const GROUND_THRESHOLD = 0.7;
     let isGrounded = false;
+    
     for (let i = 0; i < map.length; i++){
-        let toPlanes = 0;
-        let crossingNormal = [0, 0, 0];
-
         for (let face = 0; face < map[i].faces.length; face++){
             let plane = [
                 map[i].vertices[map[i].faces[face][0]], 
@@ -407,37 +407,36 @@ function checkCollisions(){
             ));
             
             let planePoint = plane[0];
-            let footPosition = [cam.pos[0], cam.pos[1] + 7, cam.pos[2]];
-            let point = addVector3([cam.pos[0], cam.pos[1] + 5, cam.pos[2]], cam.vel);
+            let playerPos = [cam.pos[0], cam.pos[1] + COLLISION_OFFSET, cam.pos[2]];
+            let nextPos = addVector3(playerPos, cam.vel);
 
-            let d = distance(point, planePoint, planeNormal);
-            if(d >= -2){
-                if(distance([cam.pos[0], cam.pos[1] + 5, cam.pos[2]], planePoint, planeNormal) < -2){
-                    crossingNormal = planeNormal;
+            // Check ground first
+            if(planeNormal[1] > GROUND_THRESHOLD){
+                let groundDist = distance(playerPos, planePoint, planeNormal);
+                if(Math.abs(groundDist) < 2){
+                    isGrounded = true;
+                    if(Math.abs(cam.vel[1]) <= gravity * 1.1) {
+                        cam.vel[1] = 0;
+                        cam.pos[1] = planePoint[1] - COLLISION_OFFSET; // Snap to ground
+                    }
                 }
-                toPlanes++;
             }
-        }
 
-        if(toPlanes == map[i].faces.length){
-            let normalVelocity = dotProduct(cam.vel, crossingNormal);
-            let newVel = subtractVector3(cam.vel, crossingNormal.map(val => val * normalVelocity));
-            cam.vel = newVel;
-            if(crossingNormal[1] > 0.7){        
-                isGrounded = true;
+            // Check collisions
+            let d = distance(nextPos, planePoint, planeNormal);
+            if(d >= -2){
+                let currentDist = distance(playerPos, planePoint, planeNormal);
+                if(currentDist < -2){
+                    let normalVelocity = dotProduct(cam.vel, planeNormal);
+                    cam.vel = subtractVector3(cam.vel, planeNormal.map(val => val * normalVelocity));
+                }
             }
-            
         }
     }
-    if(isGrounded){
-        if(Math.abs(cam.vel[1]) < 0.1) {
-            cam.vel[1] = 0;
-        }
-        cam.grounded = true;
-    } else {
-        cam.grounded = false;
-    }
+    
+    cam.grounded = isGrounded;
 }
+
 
 function transformFace(face, camera, projection, width, height, color){
     let transformed1 = face[0];
