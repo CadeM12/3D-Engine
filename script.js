@@ -421,14 +421,18 @@ function checkCollisions(){
 
         if(toPlanes == map[i].faces.length){
             let normalVelocity = dotProduct(cam.vel, crossingNormal);
-            cam.vel = subtractVector3(cam.vel, crossingNormal.map(val => val * normalVelocity));
+            let newVel = subtractVector3(cam.vel, crossingNormal.map(val => val * normalVelocity));
+            cam.vel = newVel;
             if(crossingNormal[1] > 0.7){        
                 isGrounded = true;
             }
+            
         }
     }
     if(isGrounded){
-        cam.vel[1] = 0;
+        if(Math.abs(cam.vel[1]) < 0.1) {
+            cam.vel[1] = 0;
+        }
         cam.grounded = true;
     } else {
         cam.grounded = false;
