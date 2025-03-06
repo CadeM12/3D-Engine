@@ -40,7 +40,7 @@ let cam = {
 
 //MAP
 let map = [{
-    mesh: "cube",
+    name: "cube",
     color: [120, 108, 155],
     vertices: [[10, 10, 30, 1], [-10, 10, 30, 1], [-10, -10, 30, 1], [10, -10, 30, 1], //Front
                [10, 10, 50, 1], [-10, 10, 50, 1], [-10, -10, 50, 1], [10, -10, 50, 1]], //Back
@@ -81,6 +81,46 @@ let map = [{
             [4, 5, 1], [1, 5, 2], // Right
             [4, 5, 0], [4, 0, 3], // Top
             [3, 2, 4], [2, 5, 4]] // Bottom
+}, {
+    name: "pyramid",
+    color: [200, 0, 0],
+    vertices: [[-10, 10, -40, 1], [-20, 10, -30, 1], [-10, 10, -20, 1], [0, 10, -30, 1], 
+               [-10, 0, -30, 1]],
+    faces: [[2, 1, 0], [3, 2, 0], // Bottom
+            [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]] // Sides
+}, {
+    name: "slanted box",
+    color: [200, 0, 200],
+    vertices: [[40, 10, -30, 1], [30, 10, -20, 1], [20, 10, -30, 1], [30, 10, -40, 1], //Front
+               [40, 0, -30, 1], [30, 0, -20, 1], [20, 0, -30, 1], [30, 0, -40, 1]],
+    faces: [[0, 1, 2], [0, 2, 3], // Frontw
+            [1, 5, 6], [1, 6, 2], // Right
+            [5, 4, 7], [5, 7, 6], // Back
+            [4, 0, 3], [4, 3, 7], // Left
+            [3, 2, 6], [3, 6, 7], // Top
+            [4, 5, 1], [4, 1, 0]] // Sides
+}, {
+    name: "roof",
+    color: [200, 200, 0],
+    vertices: [[100, -50, -100, 1], [-100, -50, -100, 1], [-100, -60, -100, 1], [100, -60, -100, 1], //Front
+               [100, -50, 100, 1], [-100, -50, 100, 1], [-100, -60, 100, 1], [100, -60, 100, 1]], //Back
+    faces: [[0, 1, 2], [0, 2, 3], // Front
+            [1, 5, 6], [1, 6, 2], // Rightq
+            [5, 4, 7], [5, 7, 6], // Back
+            [4, 0, 3], [4, 3, 7], // Left
+            [3, 2, 6], [3, 6, 7], // Top
+            [4, 5, 1], [4, 1, 0]] // Bottom
+}, {
+    name: "cube",
+    color: [0, 200, 200],
+    vertices: [[10, -80, 30, 1], [-10, -80, 30, 1], [-10, -90, 30, 1], [10, -90, 30, 1], //Front
+               [10, -80, 50, 1], [-10, -80, 50, 1], [-10, -90, 50, 1], [10, -90, 50, 1]], //Back
+    faces: [[0, 1, 2], [0, 2, 3], // Front
+            [1, 5, 6], [1, 6, 2], // Right
+            [5, 4, 7], [5, 7, 6], // Back
+            [4, 0, 3], [4, 3, 7], // Left
+            [3, 2, 6], [3, 6, 7], // Top
+            [4, 5, 1], [4, 1, 0]] // Bottom
 }]; 
 
 //TOOLS
@@ -389,11 +429,14 @@ function movePlayer(){
 }
 
 function checkCollisions(){
-    const COLLISION_OFFSET = 5; // Consistent height offset
+    const COLLISION_OFFSET = 5;
     const GROUND_THRESHOLD = 0.7;
     let isGrounded = false;
     
     for (let i = 0; i < map.length; i++){
+        let crossingNormal = [0, 0, 0];
+        let insidePlanes = 0;
+
         for (let face = 0; face < map[i].faces.length; face++){
             let plane = [
                 map[i].vertices[map[i].faces[face][0]], 
@@ -407,33 +450,36 @@ function checkCollisions(){
             ));
             
             let planePoint = plane[0];
-            let playerPos = [cam.pos[0], cam.pos[1] + COLLISION_OFFSET, cam.pos[2]];
-            let nextPos = addVector3(playerPos, cam.vel);
+            let footPos = [cam.pos[0], cam.pos[1] + COLLISION_OFFSET, cam.pos[2]];
+            //let headPos = [cam.pos[0], cam.pos[1] - COLLISION_OFFSET, cam.pos[2]];
+            let nextPosFoot = addVector3(footPos, cam.vel);
+            //let nextPosHead = addVector3(headPos, cam.vel);
 
-            // Check ground first
-            if(planeNormal[1] > GROUND_THRESHOLD){
-                let groundDist = distance(playerPos, planePoint, planeNormal);
-                if(Math.abs(groundDist) < 2){
-                    isGrounded = true;
-                    if(Math.abs(cam.vel[1]) <= gravity * 1.1) {
-                        cam.vel[1] = 0;
-                        cam.pos[1] = planePoint[1] - COLLISION_OFFSET; // Snap to ground
-                    }
-                }
-            }
-
-            // Check collisions
-            let d = distance(nextPos, planePoint, planeNormal);
-            if(d >= -2){
-                let currentDist = distance(playerPos, planePoint, planeNormal);
-                if(currentDist < -2){
-                    let normalVelocity = dotProduct(cam.vel, planeNormal);
-                    cam.vel = subtractVector3(cam.vel, planeNormal.map(val => val * normalVelocity));
+            let dFoot = distance(nextPosFoot, planePoint, planeNormal);
+            //let dHead = distance(nextPosHead, planePoint, planeNormal);
+            if(dFoot >= -2){
+                insidePlanes++;
+                if(distance(footPos, planePoint, planeNormal) < -2){
+                    crossingNormal = planeNormal;
                 }
             }
         }
+
+        if(insidePlanes == map[i].faces.length){
+            let normalVelocity = dotProduct(cam.vel, crossingNormal);
+            let newVel = subtractVector3(cam.vel, crossingNormal.map(val => val * normalVelocity));
+            cam.vel = newVel;
+            if(crossingNormal[1] > GROUND_THRESHOLD){
+                isGrounded = true;
+
+                let gravityComponent = [0, gravity, 0];
+                let normalComponent = dotProduct(gravityComponent, crossingNormal);
+                let projectedGravity = subtractVector3(gravityComponent, crossingNormal.map(val => val * normalComponent));
+
+                cam.vel = subtractVector3(cam.vel, projectedGravity);
+            }
+        }
     }
-    
     cam.grounded = isGrounded;
 }
 
