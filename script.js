@@ -99,28 +99,6 @@ let map = [{
             [4, 0, 3], [4, 3, 7], // Left
             [3, 2, 6], [3, 6, 7], // Top
             [4, 5, 1], [4, 1, 0]] // Sides
-}, {
-    name: "roof",
-    color: [200, 200, 0],
-    vertices: [[100, -50, -100, 1], [-100, -50, -100, 1], [-100, -60, -100, 1], [100, -60, -100, 1], //Front
-               [100, -50, 100, 1], [-100, -50, 100, 1], [-100, -60, 100, 1], [100, -60, 100, 1]], //Back
-    faces: [[0, 1, 2], [0, 2, 3], // Front
-            [1, 5, 6], [1, 6, 2], // Rightq
-            [5, 4, 7], [5, 7, 6], // Back
-            [4, 0, 3], [4, 3, 7], // Left
-            [3, 2, 6], [3, 6, 7], // Top
-            [4, 5, 1], [4, 1, 0]] // Bottom
-}, {
-    name: "cube",
-    color: [0, 200, 200],
-    vertices: [[10, -80, 30, 1], [-10, -80, 30, 1], [-10, -90, 30, 1], [10, -90, 30, 1], //Front
-               [10, -80, 50, 1], [-10, -80, 50, 1], [-10, -90, 50, 1], [10, -90, 50, 1]], //Back
-    faces: [[0, 1, 2], [0, 2, 3], // Front
-            [1, 5, 6], [1, 6, 2], // Right
-            [5, 4, 7], [5, 7, 6], // Back
-            [4, 0, 3], [4, 3, 7], // Left
-            [3, 2, 6], [3, 6, 7], // Top
-            [4, 5, 1], [4, 1, 0]] // Bottom
 }]; 
 
 //TOOLS
@@ -345,7 +323,12 @@ function shouldCullFace(face){
 //P5 FUNCTIONS
 
 function setup(){
-    createCanvas(windowWidth - 20, windowHeight - 20);
+    let canvas = createCanvas(windowWidth - 20, windowHeight - 20);
+    //canvas.elt.getContext('webgl', { antialias: true });
+    //let gl = this._renderer.GL;
+    //gl.enable(gl.DEPTH_TEST);
+    //gl.enable(gl.LEQUAL);
+    //pixelDensity(6);
     aspect = width/height;
     projMat = createPerspectiveMatrix(fFov, aspect, fNear, fFar);
     for (let i = 0; i < map.length; i++){
@@ -541,10 +524,19 @@ function transformFace(face, camera, projection, width, height, color){
 
 function renderTriangles() {
     for (let i = 0; i < facesToRender.length; i++){
-
+        
         let face = facesToRender[i];
         stroke(face[3], face[3], face[3]);
         fill(face[3], face[3], face[3]);
+        
+        //noStroke();
+        //beginShape();
+        //vertex(face[0][0] - width/2, face[0][1] - height/2, face[0][2]);
+        //vertex(face[1][0] - width/2, face[1][1] - height/2, face[1][2]);
+        //vertex(face[2][0] - width/2, face[2][1] - height/2, face[2][2]);
+        //endShape(CLOSE);
         triangle(face[0][0], face[0][1], face[1][0], face[1][1], face[2][0], face[2][1]);
+
+        
     }
 }
