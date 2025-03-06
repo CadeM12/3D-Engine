@@ -222,45 +222,6 @@ function clipTriangleAgainstPlane(planePoint, planeNormal, inTri){
     }
 }
 
-function quickSortFaces(array, start, end) {
-	let pi;
-	if ((end - start) >= 1){
-		pi = partition(array, start, end);
-		if(start < pi - 1){
-			quickSortFaces(array, start, pi-1);
-		}
-		if(end > pi){
-			quickSortFaces(array, pi, end);
-		}
-	}
-	return array;
-}
-
-function partition(array, start, end) {
-	let p = Math.min(array[Math.floor((start + end) / 2)][0][2], array[Math.floor((start + end) / 2)][1][2], array[Math.floor((start + end) / 2)][2][2]);
-	let i = start;
-	let j = end;
-
-	while (i <= j){
-		while (Math.min(array[i][0][2], array[i][1][2], array[i][2][2]) < p){
-			i++;
-		}
-		while (Math.min(array[j][0][2], array[j][1][2], array[j][2][2]) > p){
-			j--;
-		}
-
-		if(i <= j){
-			let temp = array[i];
-			array[i] = array[j];
-			array[j] = temp;
-
-			j--;
-			i++;
-		}
-	}
-	return i;
-}
-
 function createPerspectiveMatrix(fov, aspect, near, far){
     let f = 1 / Math.tan(fov / 2);
     return [
@@ -323,7 +284,7 @@ function shouldCullFace(face){
 //P5 FUNCTIONS
 
 function setup(){
-    let canvas = createCanvas(windowWidth - 20, windowHeight - 20);
+    let canvas = createCanvas(windowWidth - 20, windowHeight - 20, WEBGL);
     //canvas.elt.getContext('webgl', { antialias: true });
     //let gl = this._renderer.GL;
     //gl.enable(gl.DEPTH_TEST);
@@ -353,7 +314,6 @@ function draw(){
     for (let i = 0; i < mapFaces.length; i++){
         transformFace([mapFaces[i][0], mapFaces[i][1], mapFaces[i][2]], camera, projMat, width, height, mapFaces[i][3]);
     }
-    quickSortFaces(facesToRender, 0, facesToRender.length - 1);
     renderTriangles();
 }
 
@@ -501,9 +461,9 @@ function transformFace(face, camera, projection, width, height, color){
         transformed2 = multiplyVecMat(clipped[1], projection);
         transformed3 = multiplyVecMat(clipped[2], projection);
         
-        let z1 = transformed1[2] / transformed1[3];
-        let z2 = transformed2[2] / transformed2[3];
-        let z3 = transformed3[2] / transformed3[3];
+        let z1 = transformed1[2] / transformed1[3] * 100;
+        let z2 = transformed2[2] / transformed2[3] * 100;
+        let z3 = transformed3[2] / transformed3[3] * 100;
         
         const ndc1 = transformed1.map(val => val / transformed1[3]);
         const screenX1 = ((ndc1[0] + 1) / 2) * width;
@@ -526,16 +486,16 @@ function renderTriangles() {
     for (let i = 0; i < facesToRender.length; i++){
         
         let face = facesToRender[i];
-        stroke(face[3], face[3], face[3]);
+        //stroke(face[3], face[3], face[3]);
         fill(face[3], face[3], face[3]);
         
-        //noStroke();
-        //beginShape();
-        //vertex(face[0][0] - width/2, face[0][1] - height/2, face[0][2]);
-        //vertex(face[1][0] - width/2, face[1][1] - height/2, face[1][2]);
-        //vertex(face[2][0] - width/2, face[2][1] - height/2, face[2][2]);
-        //endShape(CLOSE);
-        triangle(face[0][0], face[0][1], face[1][0], face[1][1], face[2][0], face[2][1]);
+        noStroke();
+        beginShape();
+        vertex(face[0][0] - width/2, face[0][1] - height/2, face[0][2]);
+        vertex(face[1][0] - width/2, face[1][1] - height/2, face[1][2]);
+        vertex(face[2][0] - width/2, face[2][1] - height/2, face[2][2]);
+        endShape(CLOSE);
+        //triangle(face[0][0], face[0][1], face[1][0], face[1][1], face[2][0], face[2][1]);
 
         
     }
