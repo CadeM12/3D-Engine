@@ -20,6 +20,7 @@ let mapFaces = [];
 let facesToRender = [];
 let aspect;
 let projMat;
+let shader;
 
 let camera = [
     [1, 0, 0, 0],
@@ -99,6 +100,17 @@ let map = [{
             [4, 0, 3], [4, 3, 7], // Left
             [3, 2, 6], [3, 6, 7], // Top
             [4, 5, 1], [4, 1, 0]] // Sides
+}, {
+    name: "box",
+    color: [0, 200, 200],
+    vertices: [[50, 10, 50, 1], [45, 10, 50, 1], [45, 5, 50, 1], [50, 5, 50, 1], //Front
+               [50, 10, 55, 1], [45, 10, 55, 1], [45, 5, 55, 1], [50, 5, 55, 1]],
+    faces: [[0, 1, 2], [0, 2, 3], // Front
+            [1, 5, 6], [1, 6, 2], // Right
+            [5, 4, 7], [5, 7, 6], // Back
+            [4, 0, 3], [4, 3, 7], // Left
+            [3, 2, 6], [3, 6, 7], // Top
+            [4, 5, 1], [4, 1, 0]] // Bottoma
 }]; 
 
 //TOOLS
@@ -282,9 +294,18 @@ function shouldCullFace(face){
 //END TOOLS
 
 //P5 FUNCTIONS
+async function loadShader(){
+    const fragResponse = await fetch('./Shaders/shader.glsl');
+    const fragmentShader = await fragResponse.text();
+    return fragmentShader;
+}
 
-function setup(){
+async function setup(){
     let canvas = createCanvas(windowWidth - 20, windowHeight - 20, WEBGL);
+
+    //const fragShader = await loadShader();
+    //shader = createShader(undefined, fragShader);
+
     //canvas.elt.getContext('webgl', { antialias: true });
     //let gl = this._renderer.GL;
     //gl.enable(gl.DEPTH_TEST);
@@ -483,6 +504,12 @@ function transformFace(face, camera, projection, width, height, color){
 
 
 function renderTriangles() {
+    //shader(shader);
+//
+    //shader.setUniform('u_lightPos', [cam.pos[0], cam.pos[1], cam.pos[2]]);
+    //shader.setUniform('u_lightColor', [1.0, 1.0, 1.0]);
+    //shader.setUniform('u_ambientColor', [0.2, 0.2, 0.2]);
+
     for (let i = 0; i < facesToRender.length; i++){
         
         let face = facesToRender[i];
@@ -490,7 +517,7 @@ function renderTriangles() {
         fill(face[3], face[3], face[3]);
         
         noStroke();
-        beginShape();
+        beginShape(TRIANGLES);
         vertex(face[0][0] - width/2, face[0][1] - height/2, face[0][2]);
         vertex(face[1][0] - width/2, face[1][1] - height/2, face[1][2]);
         vertex(face[2][0] - width/2, face[2][1] - height/2, face[2][2]);
