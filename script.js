@@ -20,7 +20,7 @@ let mapFaces = [];
 let facesToRender = [];
 let aspect;
 let projMat;
-let shader;
+let shaderProgram;
 
 let camera = [
     [1, 0, 0, 0],
@@ -114,6 +114,10 @@ let map = [{
 }]; 
 
 //TOOLS
+
+function flattenMatrix(matrix) {
+    return matrix.reduce((flat, row) => flat.concat(row), []);
+}
 
 function subtractVector3(a, b){
     return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -294,23 +298,15 @@ function shouldCullFace(face){
 //END TOOLS
 
 //P5 FUNCTIONS
-async function loadShader(){
-    const fragResponse = await fetch('./Shaders/shader.glsl');
-    const fragmentShader = await fragResponse.text();
-    return fragmentShader;
+function preload(){
+    shaderProgram = loadShader('./Shaders/vert.glsl', './Shaders/frag.glsl');
 }
 
-async function setup(){
-    let canvas = createCanvas(windowWidth - 20, windowHeight - 20, WEBGL);
+function setup(){
+    createCanvas(windowWidth - 20, windowHeight - 20, WEBGL);
 
-    //const fragShader = await loadShader();
-    //shader = createShader(undefined, fragShader);
+    shader(shaderProgram);
 
-    //canvas.elt.getContext('webgl', { antialias: true });
-    //let gl = this._renderer.GL;
-    //gl.enable(gl.DEPTH_TEST);
-    //gl.enable(gl.LEQUAL);
-    //pixelDensity(6);
     aspect = width/height;
     projMat = createPerspectiveMatrix(fFov, aspect, fNear, fFar);
     for (let i = 0; i < map.length; i++){
@@ -332,8 +328,21 @@ function draw(){
     checkCollisions();
     movePlayer();
     camera = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
+
+    //console.log("original: " + camera.length);
+    //console.log("flattened: " + flattenMatrix(camera).length);
+
+    shader(shaderProgram);
+
+    shaderProgram.setUniform('uProjectionMatrix', flattenMatrix(projMat));
+    shaderProgram.setUniform('uViewMatrix', flattenMatrix(camera));
+    shaderProgram.setUniform('uLightPos', cam.pos.slice(0, 3));
+    shaderProgram.setUniform('uLightColor', [1.0, 1.0, 1.0]);
+    shaderProgram.setUniform('uAmbientColor', [0.2, 0.2, 0.2]);
+
     for (let i = 0; i < mapFaces.length; i++){
-        transformFace([mapFaces[i][0], mapFaces[i][1], mapFaces[i][2]], camera, projMat, width, height, mapFaces[i][3]);
+        prepareFace([mapFaces[i][0], mapFaces[i][1], mapFaces[i][2]], mapFaces[i][3]);
+        //transformFace([mapFaces[i][0], mapFaces[i][1], mapFaces[i][2]], camera, projMat, width, height, mapFaces[i][3]);
     }
     renderTriangles();
 }
@@ -447,6 +456,24 @@ function checkCollisions(){
     cam.grounded = isGrounded;
 }
 
+function prepareFace(face, color){
+    let v1 = face[0];
+    let v2 = face[1];
+    let v3 = face[2];
+
+    let cull = shouldCullFace([v1, v2, v3], cam.pos);
+    if(cull[0]){
+        return;
+    }
+
+    //let clippedTriangles = clipTriangleAgainstPlane([0, 0, fNear], [0, 0, 1], [v1, v2, v3]);
+
+    //for(let i = 0; i < clippedTriangles[1]; i++){
+    //    facesToRender.push([clippedTriangles[0][i][0], clippedTriangles[0][i][1], clippedTriangles[0][i][2], color]);
+    //}
+
+    facesToRender.push([v1, v2, v3, color]);
+}
 
 function transformFace(face, camera, projection, width, height, color){
     let transformed1 = face[0];
@@ -513,17 +540,31 @@ function renderTriangles() {
     for (let i = 0; i < facesToRender.length; i++){
         
         let face = facesToRender[i];
-        //stroke(face[3], face[3], face[3]);
-        fill(face[3], face[3], face[3]);
-        
-        noStroke();
+
+        let edge1 = subtractVector3(face[1], face[0]);
+        let edge2 = subtractVector3(face[2], face[0]);
+        let normalLine = normalize(crossProduct(edge1, edge2));
+        stroke(face[3]);
+        fill(face[3]);
+
         beginShape(TRIANGLES);
-        vertex(face[0][0] - width/2, face[0][1] - height/2, face[0][2]);
-        vertex(face[1][0] - width/2, face[1][1] - height/2, face[1][2]);
-        vertex(face[2][0] - width/2, face[2][1] - height/2, face[2][2]);
+
+        fill(face[3]);
+        //normal(normalLine[0], normalLine[1], normalLine[2]);
+        vertex(face[0][0], face[0][1], face[0][2]);
+
+        fill(face[3]);
+        //normal(normalLine[0], normalLine[1], normalLine[2]);
+        vertex(face[1][0], face[1][1], face[1][2]);
+
+        fill(face[3]);
+        //normal(normalLine[0], normalLine[1], normalLine[2]);
+        vertex(face[2][0], face[2][1], face[2][2]);
+
         endShape(CLOSE);
         //triangle(face[0][0], face[0][1], face[1][0], face[1][1], face[2][0], face[2][1]);
 
         
     }
 }
+
