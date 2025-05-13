@@ -17,7 +17,7 @@ out vec3 vPosition; // Pass position to the fragment shader
 void main() {
     // Transform the vertex position to clip space
 
-    gl_Position = uViewMatrix * uProjectionMatrix * vec4(aPosition, 1.0);
+    gl_Position = mat4(uViewMatrix)  * mat4(uProjectionMatrix) * vec4(aPosition, 1.0);
 
     // Pass the normal and color to the fragment shader
     vNormal = aNormal; // Normals are already in world space

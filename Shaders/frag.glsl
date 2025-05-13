@@ -26,5 +26,5 @@ void main() {
     // Apply lighting to the vertex color
     vec3 finalColor = vColor * lighting;
 
-    fragColor = vec4(finalColor, 1.0); // Output the final color
+    fragColor = vec4(vColor, 1.0); // Output the final color
 }

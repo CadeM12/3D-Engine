@@ -11,6 +11,12 @@ document.addEventListener("keydown", (e) => {
     }
 });
 
+document.addEventListener("click", (e) => {
+    castShot();
+    console.log("click");
+});
+        
+
 //VARIABLE INITIALIZATION
 let gravity = 0.1;
 let fNear = 1;
@@ -33,7 +39,7 @@ let cam = {
     pos: [0, 0, 0, 1],
     yaw: 0,
     pitch: 0,
-    sensetivity: 100,
+    sensetivity: 200,
     vel: [0, 0, 0],
     speed: 0.5,
     grounded: true
@@ -305,8 +311,6 @@ function preload(){
 function setup(){
     createCanvas(windowWidth - 20, windowHeight - 20, WEBGL);
 
-    shader(shaderProgram);
-
     aspect = width/height;
     projMat = createPerspectiveMatrix(fFov, aspect, fNear, fFar);
     for (let i = 0; i < map.length; i++){
@@ -332,19 +336,36 @@ function draw(){
     //console.log("original: " + camera.length);
     //console.log("flattened: " + flattenMatrix(camera).length);
 
-    shader(shaderProgram);
+    //shader(shaderProgram);
 
-    shaderProgram.setUniform('uProjectionMatrix', flattenMatrix(projMat));
-    shaderProgram.setUniform('uViewMatrix', flattenMatrix(camera));
-    shaderProgram.setUniform('uLightPos', cam.pos.slice(0, 3));
-    shaderProgram.setUniform('uLightColor', [1.0, 1.0, 1.0]);
-    shaderProgram.setUniform('uAmbientColor', [0.2, 0.2, 0.2]);
+    //shaderProgram.setUniform('uProjectionMatrix', flattenMatrix(projMat));
+    //shaderProgram.setUniform('uViewMatrix', flattenMatrix(camera));
+    //shaderProgram.setUniform('uLightPos', cam.pos.slice(0, 3));
+    //shaderProgram.setUniform('uLightColor', [1.0, 1.0, 1.0]);
+    //shaderProgram.setUniform('uAmbientColor', [0.2, 0.2, 0.2]);
 
     for (let i = 0; i < mapFaces.length; i++){
-        prepareFace([mapFaces[i][0], mapFaces[i][1], mapFaces[i][2]], mapFaces[i][3]);
-        //transformFace([mapFaces[i][0], mapFaces[i][1], mapFaces[i][2]], camera, projMat, width, height, mapFaces[i][3]);
+        //prepareFace([mapFaces[i][0], mapFaces[i][1], mapFaces[i][2]], mapFaces[i][3]);
+        transformFace([mapFaces[i][0], mapFaces[i][1], mapFaces[i][2]], camera, projMat, width, height, mapFaces[i][3]);
     }
+    
     renderTriangles();
+
+    stroke("white");
+    strokeWeight(0.5);
+    fill(0, 0, 0, 0)
+    beginShape();
+
+        fill(0, 0, 0, 0);
+        
+        vertex(-1, -1, 500);
+        vertex(1, -1, 500);
+        vertex(1, 1, 500);
+        vertex(-1, 1, 500);
+
+
+
+    endShape(CLOSE);
 }
 
 //GAME FUNCTIONS
@@ -544,22 +565,22 @@ function renderTriangles() {
         let edge1 = subtractVector3(face[1], face[0]);
         let edge2 = subtractVector3(face[2], face[0]);
         let normalLine = normalize(crossProduct(edge1, edge2));
-        stroke(face[3]);
+        noStroke();
         fill(face[3]);
 
         beginShape(TRIANGLES);
 
         fill(face[3]);
         //normal(normalLine[0], normalLine[1], normalLine[2]);
-        vertex(face[0][0], face[0][1], face[0][2]);
+        vertex(face[0][0] - width/2, face[0][1] - height/2, face[0][2]);
 
         fill(face[3]);
         //normal(normalLine[0], normalLine[1], normalLine[2]);
-        vertex(face[1][0], face[1][1], face[1][2]);
+        vertex(face[1][0] - width/2, face[1][1] - height/2, face[1][2]);
 
         fill(face[3]);
         //normal(normalLine[0], normalLine[1], normalLine[2]);
-        vertex(face[2][0], face[2][1], face[2][2]);
+        vertex(face[2][0] - width/2, face[2][1] - height/2, face[2][2]);
 
         endShape(CLOSE);
         //triangle(face[0][0], face[0][1], face[1][0], face[1][1], face[2][0], face[2][1]);
@@ -568,3 +589,89 @@ function renderTriangles() {
     }
 }
 
+function castShot() {
+    const origin = cam.pos.slice(0, 3); // Camera position
+    const direction = normalize([
+        Math.sin(cam.yaw) * Math.cos(cam.pitch),
+        Math.sin(cam.pitch),
+        Math.cos(cam.yaw) * Math.cos(cam.pitch)
+    ]); // Camera direction
+
+    const maxDistance = 1000; // Maximum ray distance
+    const block = castRay(origin, direction, maxDistance);
+
+    if (block) {
+        console.log("Looking at block:", block);
+    } else {
+        console.log("No block in sight.");
+    }
+}
+
+function castRay(origin, direction, maxDistance) {
+    let closestBlock = null;
+    let closestDistance = maxDistance;
+
+    for (let i = 0; i < map.length; i++) {
+        const block = map[i];
+
+        for (let face of block.faces) {
+            const v1 = block.vertices[face[0]];
+            const v2 = block.vertices[face[1]];
+            const v3 = block.vertices[face[2]];
+
+            const intersection = rayIntersectsTriangle(origin, direction, v1, v2, v3);
+            console.log("Ray Origin:", origin);
+            console.log("Ray Direction:", direction);
+            console.log("Checking Block:", block.name);
+            console.log("Intersection:", intersection);
+            if (intersection) {
+                const distance = Math.sqrt(
+                                              Math.pow(intersection[0] - origin[0], 2) +
+                                              Math.pow(intersection[1] - origin[1], 2) +
+                                              Math.pow(intersection[2] - origin[2], 2)
+                                          );
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestBlock = block;
+                }
+            }
+        }
+    }
+
+    return closestBlock;
+}
+
+function rayIntersectsTriangle(origin, direction, v1, v2, v3) {
+    const edge1 = subtractVector3(v2, v1);
+    const edge2 = subtractVector3(v3, v1);
+    const h = crossProduct(direction, edge2);
+    const a = dotProduct(edge1, h);
+
+    if (Math.abs(a) < 1e-6) {
+        return null; // Ray is parallel to the triangle
+    }
+
+    const f = 1 / a;
+    const s = subtractVector3(origin, v1);
+    const u = f * dotProduct(s, h);
+
+    if (u < 0 || u > 1) {
+        return null; // Intersection is outside the triangle
+    }
+
+    const q = crossProduct(s, edge1);
+    const v = f * dotProduct(direction, q);
+
+    if (v < 0 || u + v > 1) {
+        return null; // Intersection is outside the triangle
+    }
+
+    const t = f * dotProduct(edge2, q);
+
+    if (t > 1e-6) {
+        // Intersection point
+        return addVector3(origin, direction.map(d => d * t));
+    }
+
+    return null; // No intersection
+}
