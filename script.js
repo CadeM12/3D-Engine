@@ -36,7 +36,7 @@ let camera = [
 ];
 
 let cam = {
-    pos: [0, 0, 0, 1],
+    pos: [0, 0, -15, 1],
     yaw: 0,
     pitch: 0,
     sensetivity: 200,
@@ -118,6 +118,24 @@ let map = [{
             [3, 2, 6], [3, 6, 7], // Top
             [4, 5, 1], [4, 1, 0]] // Bottoma
 }]; 
+
+let enemies = [{
+    name: "original",
+    health: 100,
+    pos: [0, 0, 0],
+    vel: [0, 0, 0],
+    speed: 0.5,
+    grounded: true,
+    color: [100, 150, 150],
+    vertices: [[2.5, 10, -2.5, 1], [-2.5, 10, -2.5, 1], [-2.5, 0, -2.5, 1], [2.5, 0, -2.5, 1], //Front
+               [2.5, 10, 2.5, 1], [-2.5, 10, 2.5, 1], [-2.5, 0, 2.5, 1], [2.5, 0, 2.5, 1]], //Back
+    faces: [[0, 1, 2], [0, 2, 3], // Front
+            [1, 5, 6], [1, 6, 2], // Right
+            [5, 4, 7], [5, 7, 6], // Back
+            [4, 0, 3], [4, 3, 7], // Left
+            [3, 2, 6], [3, 6, 7], // Top
+            [4, 5, 1], [4, 1, 0]] // Bottom
+}]
 
 //TOOLS
 
@@ -320,16 +338,39 @@ function setup(){
                 map[i].vertices[map[i].faces[f][1]],
                 map[i].vertices[map[i].faces[f][2]], map[i].color]
             );
-        }
-    }
+        };
+    };
+    // for (let i = 0; i < enemies.length; i++){
+    //     for(let f = 0; f < enemies[i].faces.length; f++){
+    //         mapFaces.push(
+    //             [enemies[i].vertices[enemies[i].faces[f][0]],
+    //             enemies[i].vertices[enemies[i].faces[f][1]],
+    //             enemies[i].vertices[enemies[i].faces[f][2]], enemies[i].color]
+    //         );
+    //     };
+    // };
 }
 
 function draw(){
+    moveEnemies();
+    let enemyFaces = [];
+    for (let i = 0; i < enemies.length; i++){
+        for(let f = 0; f < enemies[i].faces.length; f++){
+            enemyFaces.push(
+                [enemies[i].vertices[enemies[i].faces[f][0]],
+                enemies[i].vertices[enemies[i].faces[f][1]],
+                enemies[i].vertices[enemies[i].faces[f][2]], enemies[i].color]
+            );
+        };
+    };
+    console.log(enemyFaces);
+    let faces = mapFaces.concat(enemyFaces);
+
     background('skyBlue');    
     facesToRender = [];
     getCamPos();
     getKey();
-    checkCollisions();
+    checkCollisions(cam);
     movePlayer();
     camera = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
 
@@ -344,9 +385,9 @@ function draw(){
     //shaderProgram.setUniform('uLightColor', [1.0, 1.0, 1.0]);
     //shaderProgram.setUniform('uAmbientColor', [0.2, 0.2, 0.2]);
 
-    for (let i = 0; i < mapFaces.length; i++){
-        //prepareFace([mapFaces[i][0], mapFaces[i][1], mapFaces[i][2]], mapFaces[i][3]);
-        transformFace([mapFaces[i][0], mapFaces[i][1], mapFaces[i][2]], camera, projMat, width, height, mapFaces[i][3]);
+    for (let i = 0; i < faces.length; i++){
+        //prepareFace([faces[i][0], faces[i][1], faces[i][2]], faces[i][3]);
+        transformFace([faces[i][0], faces[i][1], faces[i][2]], camera, projMat, width, height, faces[i][3]);
     }
     
     renderTriangles();
@@ -422,7 +463,19 @@ function movePlayer(){
     cam.pos[1] += cam.vel[1];
 }
 
-function checkCollisions(){
+function moveEnemies(){
+    for (let i = 0; i < enemies.length; i++){
+        enemies[i].vel = [0, 0, 0];
+        enemies[i].pos = addVector3(enemies[i].pos, enemies[i].vel);
+        for(let v = 0; v < enemies[i].vertices.length; v++){
+            enemies[i].vertices[v] = addVector3(enemies[i].vertices[v], enemies[i].vel);
+        }
+        //console.log(enemies[i]);
+    }
+}
+
+
+function checkCollisions(entity){
     const COLLISION_OFFSET = 5;
     const GROUND_THRESHOLD = 0.7;
     let isGrounded = false;
@@ -444,10 +497,10 @@ function checkCollisions(){
             ));
             
             let planePoint = plane[0];
-            let footPos = [cam.pos[0], cam.pos[1] + COLLISION_OFFSET, cam.pos[2]];
-            //let headPos = [cam.pos[0], cam.pos[1] - COLLISION_OFFSET, cam.pos[2]];
-            let nextPosFoot = addVector3(footPos, cam.vel);
-            //let nextPosHead = addVector3(headPos, cam.vel);
+            let footPos = [entity.pos[0], entity.pos[1] + COLLISION_OFFSET, entity.pos[2]];
+            //let headPos = [entity.pos[0], entity.pos[1] - COLLISION_OFFSET, entity.pos[2]];
+            let nextPosFoot = addVector3(footPos, entity.vel);
+            //let nextPosHead = addVector3(headPos, entity.vel);
 
             let dFoot = distance(nextPosFoot, planePoint, planeNormal);
             //let dHead = distance(nextPosHead, planePoint, planeNormal);
@@ -460,9 +513,9 @@ function checkCollisions(){
         }
 
         if(insidePlanes == map[i].faces.length){
-            let normalVelocity = dotProduct(cam.vel, crossingNormal);
-            let newVel = subtractVector3(cam.vel, crossingNormal.map(val => val * normalVelocity));
-            cam.vel = newVel;
+            let normalVelocity = dotProduct(entity.vel, crossingNormal);
+            let newVel = subtractVector3(entity.vel, crossingNormal.map(val => val * normalVelocity));
+            entity.vel = newVel;
             if(crossingNormal[1] > GROUND_THRESHOLD){
                 isGrounded = true;
 
@@ -470,11 +523,11 @@ function checkCollisions(){
                 let normalComponent = dotProduct(gravityComponent, crossingNormal);
                 let projectedGravity = subtractVector3(gravityComponent, crossingNormal.map(val => val * normalComponent));
 
-                cam.vel = subtractVector3(cam.vel, projectedGravity);
+                entity.vel = subtractVector3(entity.vel, projectedGravity);
             }
         }
     }
-    cam.grounded = isGrounded;
+    entity.grounded = isGrounded;
 }
 
 function prepareFace(face, color){
@@ -592,38 +645,36 @@ function renderTriangles() {
 function castShot() {
     const origin = cam.pos.slice(0, 3); // Camera position
     const direction = normalize([
-        Math.sin(cam.yaw) * Math.cos(cam.pitch),
-        Math.sin(cam.pitch),
-        Math.cos(cam.yaw) * Math.cos(cam.pitch)
+        Math.cos(cam.pitch) * Math.sin(cam.yaw),
+        -Math.sin(cam.pitch),
+        Math.cos(cam.pitch) * Math.cos(cam.yaw)
     ]); // Camera direction
 
     const maxDistance = 1000; // Maximum ray distance
-    const block = castRay(origin, direction, maxDistance);
+    const enemy = castRay(origin, direction, maxDistance);
 
-    if (block) {
-        console.log("Looking at block:", block);
+    if (enemy != null) {
+        console.log("Looking at enemy at index:", enemy);
     } else {
-        console.log("No block in sight.");
+        console.log("No enemy in sight.");
     }
 }
 
 function castRay(origin, direction, maxDistance) {
-    let closestBlock = null;
+    let closestEnemy = null;
+    let closestIndex = null;
     let closestDistance = maxDistance;
 
-    for (let i = 0; i < map.length; i++) {
-        const block = map[i];
+    for (let i = 0; i < enemies.length; i++) {
+        const enemy = enemies[i];
 
-        for (let face of block.faces) {
-            const v1 = block.vertices[face[0]];
-            const v2 = block.vertices[face[1]];
-            const v3 = block.vertices[face[2]];
+        for (let face of enemy.faces) {
+            const v1 = enemy.vertices[face[0]];
+            const v2 = enemy.vertices[face[1]];
+            const v3 = enemy.vertices[face[2]];
 
             const intersection = rayIntersectsTriangle(origin, direction, v1, v2, v3);
-            console.log("Ray Origin:", origin);
-            console.log("Ray Direction:", direction);
-            console.log("Checking Block:", block.name);
-            console.log("Intersection:", intersection);
+
             if (intersection) {
                 const distance = Math.sqrt(
                                               Math.pow(intersection[0] - origin[0], 2) +
@@ -632,13 +683,13 @@ function castRay(origin, direction, maxDistance) {
                                           );
                 if (distance < closestDistance) {
                     closestDistance = distance;
-                    closestBlock = block;
+                    closestEnemy = enemy;
+                    closestIndex = i;
                 }
             }
         }
     }
-
-    return closestBlock;
+    return closestIndex;
 }
 
 function rayIntersectsTriangle(origin, direction, v1, v2, v3) {
@@ -647,7 +698,7 @@ function rayIntersectsTriangle(origin, direction, v1, v2, v3) {
     const h = crossProduct(direction, edge2);
     const a = dotProduct(edge1, h);
 
-    if (Math.abs(a) < 1e-6) {
+    if (Math.abs(a) < 1e-4) {
         return null; // Ray is parallel to the triangle
     }
 
