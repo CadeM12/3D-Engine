@@ -13,7 +13,6 @@ document.addEventListener("keydown", (e) => {
 
 document.addEventListener("click", (e) => {
     castShot();
-    console.log("click");
 });
         
 
@@ -46,6 +45,9 @@ let cam = {
 };
 
 //MAP
+
+let bullets = [];
+
 let map = [{
     name: "cube",
     color: [120, 108, 155],
@@ -369,6 +371,7 @@ function draw(){
     facesToRender = [];
     getCamPos();
     getKey();
+    checkCollisions(cam);
     movePlayer();
     camera = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
 
@@ -397,10 +400,10 @@ function draw(){
 
         fill(0, 0, 0, 0);
         
-        vertex(-1, -1, 700);
-        vertex(1, -1, 700);
-        vertex(1, 1, 700);
-        vertex(-1, 1, 700);
+        vertex(-1, -1, 500);
+        vertex(1, -1, 500);
+        vertex(1, 1, 500);
+        vertex(-1, 1, 500);
 
 
 
@@ -455,16 +458,16 @@ function getCamPos(){
     cam.yaw -= movedX/cam.sensetivity;
 }
 
-//function movePlayer(){
-//    cam.pos[0] += cam.vel[0];
-//    cam.pos[2] += cam.vel[2];
-//    cam.pos[1] += cam.vel[1];
-//}
+function movePlayer(){
+    cam.pos[0] += cam.vel[0];
+    cam.pos[2] += cam.vel[2];
+    cam.pos[1] += cam.vel[1];
+}
 
 function moveEnemies(){
     for (let i = 0; i < enemies.length; i++){
         enemies[i].vel = [0.1, 0, 0.1];
-        //checkCollisions(enemies[i]);
+        checkCollisions(enemies[i]);
         enemies[i].pos = addVector3(enemies[i].pos, enemies[i].vel);
         for (let j = 0; j < enemies[i].vertices.length; j++){
             enemies[i].vertices[j][0] += enemies[i].vel[0];
@@ -476,158 +479,159 @@ function moveEnemies(){
 
 function doEnemyAI(enemy){}
 
-// function checkCollisions(entity){
-//     const COLLISION_OFFSET = 5;
-//     const GROUND_THRESHOLD = 0.7;
-//     let isGrounded = false;
-    
-//     for (let i = 0; i < map.length; i++){
-//         let crossingNormal = [0, 0, 0];
-//         let insidePlanes = 0;
-
-//         for (let face = 0; face < map[i].faces.length; face++){
-//             let plane = [
-//                 map[i].vertices[map[i].faces[face][0]], 
-//                 map[i].vertices[map[i].faces[face][1]], 
-//                 map[i].vertices[map[i].faces[face][2]]
-//             ];
-            
-//             let planeNormal = normalize(crossProduct(
-//                 subtractVector3(plane[1], plane[0]), 
-//                 subtractVector3(plane[2], plane[0])
-//             ));
-            
-//             let planePoint = plane[0];
-//             let footPos = [entity.pos[0], entity.pos[1] + COLLISION_OFFSET, entity.pos[2]];
-//             //let headPos = [entity.pos[0], entity.pos[1] - COLLISION_OFFSET, entity.pos[2]];
-//             let nextPosFoot = addVector3(footPos, entity.vel);
-//             //let nextPosHead = addVector3(headPos, entity.vel);
-
-//             let dFoot = distance(nextPosFoot, planePoint, planeNormal);
-//             //let dHead = distance(nextPosHead, planePoint, planeNormal);
-//             if(dFoot >= -2){
-//                 insidePlanes++;
-//                 if(distance(footPos, planePoint, planeNormal) < -2){
-//                     crossingNormal = planeNormal;
-//                 }
-//             }
-//         }
-
-//         if(insidePlanes == map[i].faces.length){
-//             let normalVelocity = dotProduct(entity.vel, crossingNormal);
-//             let newVel = subtractVector3(entity.vel, crossingNormal.map(val => val * normalVelocity));
-//             entity.vel = newVel;
-//             if(crossingNormal[1] > GROUND_THRESHOLD){
-//                 isGrounded = true;
-
-//                 let gravityComponent = [0, gravity, 0];
-//                 let normalComponent = dotProduct(gravityComponent, crossingNormal);
-//                 let projectedGravity = subtractVector3(gravityComponent, crossingNormal.map(val => val * normalComponent));
-
-//                 entity.vel = subtractVector3(entity.vel, projectedGravity);
-//             }
-//         }
-//     }
-//     entity.grounded = isGrounded;
-// }
-
-function movePlayer() {
-    // Predict next position
-
-    let footPos = [cam.pos[0], cam.pos[1] + 5, cam.pos[2]];
-
-    let nextPos = addVector3(footPos, cam.vel);
-
-    // Check for collisions along the movement vector
-    checkCollisionsSegment(footPos, nextPos, map, 2);
-
-    cam.pos = addVector3(cam.pos, cam.vel);
-}
-
-// Segment (swept) collision check
-function checkCollisionsSegment(start, end, meshList = map, radius = 2) {
-    cam.grounded = false;
-    for (const mesh of meshList) {
-        for (const face of mesh.faces) {
-            const a = mesh.vertices[face[2]];
-            const b = mesh.vertices[face[1]];
-            const c = mesh.vertices[face[0]];
-
-            // Plane normal
-            const normal = normalize(crossProduct(
-                subtractVector3(b, a),
-                subtractVector3(c, a)
+function checkCollisions(entity){
+    const COLLISION_OFFSET = 5;
+    const GROUND_THRESHOLD = 0.7;
+    let isGrounded = false;
+ 
+    for (let i = 0; i < map.length; i++){
+        let crossingNormal = [0, 0, 0];
+        let insidePlanes = 0;
+        for (let face = 0; face < map[i].faces.length; face++){
+            let plane = [
+                map[i].vertices[map[i].faces[face][0]], 
+                map[i].vertices[map[i].faces[face][1]], 
+                map[i].vertices[map[i].faces[face][2]]
+            ];
+         
+            let planeNormal = normalize(crossProduct(
+                subtractVector3(plane[1], plane[0]), 
+                subtractVector3(plane[2], plane[0])
             ));
-
-            // Compute intersection of movement segment with plane
-            const planeD = -dotProduct(normal, a);
-            const startDist = dotProduct(normal, start) + planeD;
-            const endDist = dotProduct(normal, end) + planeD;
-
-            // If segment crosses the plane
-            if ((startDist >= radius && endDist <= radius) || (startDist <= radius && endDist >= radius)) {
-                // Find intersection point
-                let t = startDist / (startDist - endDist);
-                let intersection = [
-                    start[0] + (end[0] - start[0]) * t,
-                    start[1] + (end[1] - start[1]) * t,
-                    start[2] + (end[2] - start[2]) * t
-                ];
-
-                // Check if intersection is inside triangle
-                if (pointInTriangle(intersection, a, b, c)) {
-
-                    //cam.pos[0] = intersection[0];
-                    //cam.pos[1] = intersection[1] + 5;
-                    //cam.pos[2] = intersection[2];
-
-                    let vDotN = dotProduct(cam.vel, normal);
-                    cam.vel = subtractVector3(cam.vel, normal.map(n => n * vDotN));
-                    if(normal[1] < -0.7){
-                        cam.grounded = true;
-                    
-                        let gravityComponent = [0, gravity, 0];
-                        let normalComponent = dotProduct(gravityComponent, normal);
-                        let projectedGravity = subtractVector3(gravityComponent, normal.map(val => val * normalComponent));
-                    
-                        cam.vel = subtractVector3(cam.vel, projectedGravity);
-                    }
+         
+            let planePoint = plane[0];
+            let footPos = [entity.pos[0], entity.pos[1] + COLLISION_OFFSET, entity.pos[2]];
+            //let headPos = [entity.pos[0], entity.pos[1] - COLLISION_OFFSET, entity.pos[2]];
+            let nextPosFoot = addVector3(footPos, entity.vel);
+            //let nextPosHead = addVector3(headPos, entity.vel);
+            let dFoot = distance(nextPosFoot, planePoint, planeNormal);
+            //let dHead = distance(nextPosHead, planePoint, planeNormal);
+            if(dFoot >= -2){
+                insidePlanes++;
+                if(distance(footPos, planePoint, planeNormal) < -2){
+                    crossingNormal = planeNormal;
                 }
             }
         }
+        if(insidePlanes == map[i].faces.length){
+            let normalVelocity = dotProduct(entity.vel, crossingNormal);
+            let newVel = subtractVector3(entity.vel, crossingNormal.map(val => val * normalVelocity));
+            entity.vel = newVel;
+            if(crossingNormal[1] > GROUND_THRESHOLD){
+                isGrounded = true;
+                let gravityComponent = [0, gravity, 0];
+                let normalComponent = dotProduct(gravityComponent, crossingNormal);
+                let projectedGravity = subtractVector3(gravityComponent, crossingNormal.map(val => val * normalComponent));
+                entity.vel = subtractVector3(entity.vel, projectedGravity);
+            }
+        }
     }
+    entity.grounded = isGrounded;
 }
 
-function pointInTriangle(p, a, b, c) {
-    // All are 3D vectors
-    const v0 = subtractVector3(c, a);
-    const v1 = subtractVector3(b, a);
-    const v2 = subtractVector3(p, a);
+// function movePlayer() {
+//     // Predict next position
 
-    const dot00 = dotProduct(v0, v0);
-    const dot01 = dotProduct(v0, v1);
-    const dot02 = dotProduct(v0, v2);
-    const dot11 = dotProduct(v1, v1);
-    const dot12 = dotProduct(v1, v2);
+//     let footPos = [cam.pos[0], cam.pos[1] + 5, cam.pos[2]];
 
-    const denom = dot00 * dot11 - dot01 * dot01;
-    if (denom === 0) return false; // Degenerate triangle
+//     let nextPos = addVector3(footPos, cam.vel);
 
-    const u = (dot11 * dot02 - dot01 * dot12) / denom;
-    const v = (dot00 * dot12 - dot01 * dot02) / denom;
+//     // Check for collisions along the movement vector
+//     checkCollisionsSegment(footPos, nextPos, map, 2);
 
-    return (u >= 0) && (v >= 0) && (u + v <= 1);
-}
+//     cam.pos = addVector3(cam.pos, cam.vel);
+// }
 
-function prepareFace(face, color){
-    let v1 = face[0];
-    let v2 = face[1];
-    let v3 = face[2];
+// // Segment (swept) collision check
+// function checkCollisionsSegment(start, end, meshList = map, radius = 2) {
+//     cam.grounded = false;
+//     for (const mesh of meshList) {
+//         for (const face of mesh.faces) {
+//             const a = mesh.vertices[face[2]];
+//             const b = mesh.vertices[face[1]];
+//             const c = mesh.vertices[face[0]];
 
-    let cull = shouldCullFace([v1, v2, v3], cam.pos);
-    if(cull[0]){
-        return;
-    }
+//             // Plane normal
+//             const normal = normalize(crossProduct(
+//                 subtractVector3(b, a),
+//                 subtractVector3(c, a)
+//             ));
+
+//             if (normal[0] === 0 && normal[1] === 0 && normal[2] === 0) {
+//                 //console.error("Invalid plane normal: vertices may be collinear or degenerate.");
+//                 continue; // Skip this face
+//             }
+
+//             // Compute intersection of movement segment with plane
+//             const planeD = -dotProduct(normal, a);
+//             const startDist = dotProduct(normal, start) + planeD;
+//             const endDist = dotProduct(normal, end) + planeD;
+
+//             // If segment crosses the plane
+//             if ((startDist >= radius && endDist <= radius) || (startDist <= radius && endDist >= radius)) {
+//                 // Find intersection point
+//                 let t = startDist / (startDist - endDist);
+//                 let intersection = [
+//                     start[0] + (end[0] - start[0]) * t,
+//                     start[1] + (end[1] - start[1]) * t,
+//                     start[2] + (end[2] - start[2]) * t
+//                 ];
+
+//                 // Check if intersection is inside triangle
+//                 if (pointInTriangle(intersection, a, b, c)) {
+
+//                     //cam.pos[0] = intersection[0];
+//                     //cam.pos[1] = intersection[1] + 5;q
+//                     //cam.pos[2] = intersection[2];
+
+//                     let vDotN = dotProduct(cam.vel, normal);
+//                     cam.vel = subtractVector3(cam.vel, normal.map(n => n * vDotN));
+//                     if(normal[1] < -0.7){
+//                         cam.grounded = true;
+                    
+//                         let gravityComponent = [0, gravity, 0];
+//                         let normalComponent = dotProduct(gravityComponent, normal);
+//                         let projectedGravity = subtractVector3(gravityComponent, normal.map(val => val * normalComponent));
+                    
+//                         cam.vel = subtractVector3(cam.vel, projectedGravity);
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
+
+// function pointInTriangle(p, a, b, c) {
+//     // All are 3D vectors
+//     const v0 = subtractVector3(c, a);
+//     const v1 = subtractVector3(b, a);
+//     const v2 = subtractVector3(p, a);
+
+//     const dot00 = dotProduct(v0, v0);
+//     const dot01 = dotProduct(v0, v1);
+//     const dot02 = dotProduct(v0, v2);
+//     const dot11 = dotProduct(v1, v1);
+//     const dot12 = dotProduct(v1, v2);
+
+//     const denom = dot00 * dot11 - dot01 * dot01;
+//     if (denom === 0) return false; // Degenerate triangle
+
+//     const u = (dot11 * dot02 - dot01 * dot12) / denom;
+//     const v = (dot00 * dot12 - dot01 * dot02) / denom;
+
+//     const epsilon = 1e-6;
+//     return (u >= -epsilon) && (v >= -epsilon) && (u + v <= 1 + epsilon);
+// }
+
+// function prepareFace(face, color){
+//     let v1 = face[0];
+//     let v2 = face[1];
+//     let v3 = face[2];
+
+//     let cull = shouldCullFace([v1, v2, v3], cam.pos);
+//     if(cull[0]){
+//         return;
+//     }
 
     //let clippedTriangles = clipTriangleAgainstPlane([0, 0, fNear], [0, 0, 1], [v1, v2, v3]);
 
@@ -635,8 +639,8 @@ function prepareFace(face, color){
     //    facesToRender.push([clippedTriangles[0][i][0], clippedTriangles[0][i][1], clippedTriangles[0][i][2], color]);
     //}
 
-    facesToRender.push([v1, v2, v3, color]);
-}
+//     facesToRender.push([v1, v2, v3, color]);
+// }
 
 function transformFace(face, camera, projection, width, height, color){
     let transformed1 = face[0];
@@ -750,9 +754,32 @@ function castShot() {
 }
 
 function castRay(origin, direction, maxDistance) {
-    let closestEnemy = null;
     let closestIndex = null;
     let closestDistance = maxDistance;
+
+    for (let i = 0; i < map.length; i++) {
+        const block = map[i];
+
+        for (let face of block.faces) {
+            const v1 = block.vertices[face[0]];
+            const v2 = block.vertices[face[1]];
+            const v3 = block.vertices[face[2]];
+
+            const intersection = rayIntersectsTriangle(origin, direction, v1, v2, v3);
+
+            if (intersection) {
+                const distance = Math.sqrt(
+                                              Math.pow(intersection[0] - origin[0], 2) +
+                                              Math.pow(intersection[1] - origin[1], 2) +
+                                              Math.pow(intersection[2] - origin[2], 2)
+                                          );
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestIndex = null;
+                }
+            }
+        }
+    }
 
     for (let i = 0; i < enemies.length; i++) {
         const enemy = enemies[i];
@@ -772,13 +799,14 @@ function castRay(origin, direction, maxDistance) {
                                           );
                 if (distance < closestDistance) {
                     closestDistance = distance;
-                    closestEnemy = enemy;
                     closestIndex = i;
                 }
             }
         }
     }
-    return closestIndex;
+    if(closestIndex != null){
+        return closestIndex;
+    }
 }
 
 function rayIntersectsTriangle(origin, direction, v1, v2, v3) {
@@ -815,3 +843,47 @@ function rayIntersectsTriangle(origin, direction, v1, v2, v3) {
 
     return null; // No intersection
 }
+
+// function showBullets(){
+//     for (let i = 0; i < bullets.length; i++){
+//         bullets[i].pos[0] += bullets[i].vel[0] * bullets[i].speed;
+//         bullets[i].pos[1] += bullets[i].vel[1] * bullets[i].speed;
+//         bullets[i].pos[2] += bullets[i].vel[2] * bullets[i].speed;
+
+//         let bulletScreenPos = multiplyVecMat([...bullets[i].pos, 1], camera);
+//         let bulletScreenPos2 = multiplyVecMat(bulletScreenPos, projMat);
+//         let z = bulletScreenPos2[2];
+//         let ndc = bulletScreenPos2.map(val => val / bulletScreenPos2[3]);
+//         let screenX = ((ndc[0] + 1) / 2) * width;
+//         let screenY = ((1 - ndc[1]) / 2) * height;
+//         let distance = Math.sqrt(
+//             Math.pow(bullets[i].pos[0] - cam.pos[0], 2) +
+//             Math.pow(bullets[i].pos[1] - cam.pos[1], 2) +
+//             Math.pow(bullets[i].pos[2] - cam.pos[2], 2)
+//         );
+
+//         console.log(distance)
+//         if(distance > 1000){
+//             bullets.splice(i, 1);
+//             i--;
+//             continue;
+//         }
+
+//         beginShape();
+//         fill(0, 0, 0);
+//         strokeWeight(z);
+//         point(screenX - width/2, screenY - height/2, z + 1000);
+
+//         endShape(CLOSE);
+
+//     }
+// }
+
+// function shootBullet(){
+//     let bullet = {
+//         pos: [cam.pos[0], cam.pos[1], cam.pos[2]],
+//         vel: [Math.cos(cam.pitch) * Math.sin(cam.yaw), -Math.sin(cam.pitch), Math.cos(cam.pitch) * Math.cos(cam.yaw)],
+//         speed: 5
+//     }
+//     bullets.push(bullet);
+// }
