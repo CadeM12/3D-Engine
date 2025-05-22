@@ -13,6 +13,16 @@ document.addEventListener("keydown", (e) => {
 
 document.addEventListener("click", (e) => {
     castShot();
+    let gl = this._renderer.GL;
+    gl.disable(gl.DEPTH_TEST);
+    stroke("blue");
+    strokeWeight(1);
+    fill(0, 0, 0);
+    // Draw the rect in front of everything
+    circle(0, 0, 5);
+
+    // Re-enable depth test
+    gl.enable(gl.DEPTH_TEST);
 });
         
 
@@ -26,6 +36,7 @@ let facesToRender = [];
 let aspect;
 let projMat;
 let shaderProgram;
+let gunOverlay;
 
 let camera = [
     [1, 0, 0, 0],
@@ -325,6 +336,7 @@ function shouldCullFace(face){
 
 //P5 FUNCTIONS
 function preload(){
+    gunOverlay = loadImage('/Sources/Images/gun.png');
     shaderProgram = loadShader('./Shaders/vert.glsl', './Shaders/frag.glsl');
 }
 
@@ -394,20 +406,21 @@ function draw(){
     renderTriangles();
 
     stroke("white");
-    strokeWeight(0.5);
+    strokeWeight(1);
     fill(0, 0, 0, 0)
-    beginShape();
 
-        fill(0, 0, 0, 0);
-        
-        vertex(-1, -1, 500);
-        vertex(1, -1, 500);
-        vertex(1, 1, 500);
-        vertex(-1, 1, 500);
+    let gl = this._renderer.GL;
+    gl.disable(gl.DEPTH_TEST);
 
+    // Draw the rect in front of everything
+    rect(-2.5, -2.5, 5, 5);
+    noFill();
+    noStroke();
+    image(gunOverlay, -width/6, -height/6, width/1.5, height/1.5);
 
+    // Re-enable depth test
+    gl.enable(gl.DEPTH_TEST);
 
-    endShape(CLOSE);
 }
 
 //GAME FUNCTIONS
