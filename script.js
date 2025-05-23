@@ -12,22 +12,24 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("click", (e) => {
-    castShot();
-    let gl = this._renderer.GL;
-    gl.disable(gl.DEPTH_TEST);
-    stroke("blue");
-    strokeWeight(1);
-    fill(0, 0, 0);
-    // Draw the rect in front of everything
-    circle(0, 0, 5);
-
-    // Re-enable depth test
-    gl.enable(gl.DEPTH_TEST);
+    let enemy = castShot();
+    if(enemy != null){
+        enemies[enemy].health -= 10;
+        if(enemies[enemy].health <= 0){
+            console.log("Enemy: " + enemy + " killed");
+            enemies.splice(enemy, 1);
+        }
+    }
+    shot = true;
+    shotTimer = shotDuration;
 });
         
 
 //VARIABLE INITIALIZATION
 let gravity = 0.1;
+let shot = false;
+let shotTimer = 0;
+const shotDuration = 100;
 let fNear = 1;
 let fFar = 100;
 let fFov = Math.PI/3;
@@ -379,31 +381,36 @@ function draw(){
     };
     let faces = mapFaces.concat(enemyFaces);
 
-    background('skyBlue');    
+    background(64, 3, 3);    
     facesToRender = [];
     getCamPos();
     getKey();
     checkCollisions(cam);
     movePlayer();
     camera = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
-
+    if(shotTimer >= 0){
+        shotTimer -= deltaTime;
+    }
+    
     //console.log("original: " + camera.length);
     //console.log("flattened: " + flattenMatrix(camera).length);
-
+    
     //shader(shaderProgram);
-
+    
     //shaderProgram.setUniform('uProjectionMatrix', flattenMatrix(projMat));
     //shaderProgram.setUniform('uViewMatrix', flattenMatrix(camera));
     //shaderProgram.setUniform('uLightPos', cam.pos.slice(0, 3));
     //shaderProgram.setUniform('uLightColor', [1.0, 1.0, 1.0]);
     //shaderProgram.setUniform('uAmbientColor', [0.2, 0.2, 0.2]);
-
+    
     for (let i = 0; i < faces.length; i++){
         //prepareFace([faces[i][0], faces[i][1], faces[i][2]], faces[i][3]);
         transformFace([faces[i][0], faces[i][1], faces[i][2]], camera, projMat, width, height, faces[i][3]);
     }
     
     renderTriangles();
+
+    showHealthbars();
 
     stroke("white");
     strokeWeight(1);
@@ -416,6 +423,17 @@ function draw(){
     rect(-2.5, -2.5, 5, 5);
     noFill();
     noStroke();
+    
+    if(shotTimer > 0){
+        stroke(42, 245, 255);
+        strokeWeight(5);
+        line(0, 0, width / 4, height / 4.3);
+        line(0, 0, width / 4, height / 4.3 - 5);
+        line(0, 0, width / 4, height / 4.3 - 10);
+    } else {
+        shot = false;
+    }
+
     image(gunOverlay, -width/6, -height/6, width/1.5, height/1.5);
 
     // Re-enable depth test
@@ -487,6 +505,35 @@ function moveEnemies(){
             enemies[i].vertices[j][1] += enemies[i].vel[1];
             enemies[i].vertices[j][2] += enemies[i].vel[2];
         }
+    }
+}
+
+function showHealthbars(){
+    for (let i = 0; i < enemies.length; i++){
+        let enemyScreenPos = multiplyVecMat([...enemies[i].pos, 1], camera);
+        let enemyScreenPos2 = multiplyVecMat(enemyScreenPos, projMat);
+
+        if (enemyScreenPos2[3] === 0) continue;
+
+        let ndc = [enemyScreenPos2[0] / enemyScreenPos2[3], enemyScreenPos2[1] / enemyScreenPos2[3], enemyScreenPos2[2] / enemyScreenPos2[3]];
+
+        let screenX = ((ndc[0] + 1)/2) * width;
+        let screenY = ((1 - ndc[1])/2) * height;
+
+        screenX = Math.max(50, Math.min(width - 50, screenX));
+        screenY = Math.max(20, Math.min(height - 20, screenY));
+
+        let gl = this._renderer.GL;
+
+        gl.disable(gl.DEPTH_TEST);
+
+        noStroke();
+        fill(255, 0, 0);
+        rect(screenX - width/2 - 50, screenY - 100 - height/2, 100, 20);
+        fill(0, 255, 0);
+        rect(screenX - width/2 - 50, screenY - 100 - height/2, (enemies[i].health / 100) * 100, 20);
+
+        gl.enable(gl.DEPTH_TEST);
     }
 }
 
@@ -761,8 +808,10 @@ function castShot() {
 
     if (enemy != null) {
         console.log("Looking at enemy at index:", enemy);
+        return enemy;
     } else {
         console.log("No enemy in sight.");
+        return null;
     }
 }
 
