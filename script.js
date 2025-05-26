@@ -1,6 +1,9 @@
 //PAUSE GAME WITH Q
 let paused = false;
+let editorMode = false;
+let placing = false;
 document.addEventListener("keydown", (e) => {
+    e.preventDefault();
     if (e.key === "q") {
         paused = !paused;
         if(paused){
@@ -9,21 +12,98 @@ document.addEventListener("keydown", (e) => {
             document.exitPointerLock();
         }
     }
+
+    if (e.key === "l") {
+        editorMode = !editorMode;
+        
+    }
+
+    if(e.key === "c" && editorMode){
+        placedObjects.push(baseCube);
+    }
+
+    if(e.key === "p" && editorMode){
+        placedObjects.push(basePyramid);
+    }
+
+    if(e.key === "v" && editorMode){
+        placedObjects.push(baseSlant);
+    }
 });
 
 document.addEventListener("click", (e) => {
-    let enemy = castShot();
+    e.preventDefault();
+    let enemy = null;
+    let damage = 0;
+    if(e.button == 0){
+        enemy = castShot(1000);
+        damage = 10;
+        shot = true;
+        shotTimer = shotDuration;
+    } else if(e.button == 2){
+        enemy = castShot(10);
+        damage = 20;
+    }
     if(enemy != null){
-        enemies[enemy].health -= 10;
+        enemies[enemy].health -= damage;
         if(enemies[enemy].health <= 0){
             console.log("Enemy: " + enemy + " killed");
             enemies.splice(enemy, 1);
         }
     }
-    shot = true;
-    shotTimer = shotDuration;
 });
         
+
+let baseEnemy = {
+    name: "original",
+    health: 100,
+    pos: [0, 0, 0],
+    vel: [0, 0, 0],
+    speed: 0.1,
+    grounded: true,
+    color: [100, 150, 150],
+    vertices: [[2.5, 10, -2.5, 1], [-2.5, 10, -2.5, 1], [-2.5, 0, -2.5, 1], [2.5, 0, -2.5, 1], //Front
+               [2.5, 10, 2.5, 1], [-2.5, 10, 2.5, 1], [-2.5, 0, 2.5, 1], [2.5, 0, 2.5, 1]], //Back
+    faces: [[0, 1, 2], [0, 2, 3], // Front
+            [1, 5, 6], [1, 6, 2], // Right
+            [5, 4, 7], [5, 7, 6], // Back
+            [4, 0, 3], [4, 3, 7], // Left
+            [3, 2, 6], [3, 6, 7], // Top
+            [4, 5, 1], [4, 1, 0]] // Bottom
+};
+
+let baseCube = {
+    name: "cube",
+    color: [100, 170, 255],
+    vertices: [[10, 10, -10, 1], [-10, 10, -10, 1], [-10, -10, -10, 1], [10, -10, -10, 1], //Front
+               [10, 10, 10, 1], [-10, 10, 10, 1], [-10, -10, 10, 1], [10, -10, 10, 1]], //Back
+    faces: [[0, 1, 2], [0, 2, 3], // Front
+            [1, 5, 6], [1, 6, 2], // Right
+            [5, 4, 7], [5, 7, 6], // Back
+            [4, 0, 3], [4, 3, 7], // Left
+            [3, 2, 6], [3, 6, 7], // Top
+            [4, 5, 1], [4, 1, 0]] // Bottom
+};
+
+let basePyramid = {
+    name: "pyramid",
+    color: [200, 0, 0],
+    vertices: [[10, 10, 10, 1], [-10, 10, 10, 1], [-10, 10, -10, 1], [10, 10, -10, 1], 
+               [0, 0, 0, 1]],
+    faces: [[0, 1, 2], [0, 2, 3], // Bottom
+            [4, 1, 0], [4, 2, 1], [4, 3, 2], [4, 0, 3]] // Sides
+};
+
+let baseSlant = {
+    name: "slant",
+    color: [0, 150, 60],
+    vertices: [[10, 10, -10, 1], [-10, 10, -10, 1], [-10, 0, -10, 1], [10, 0, -10, 1], 
+               [10, 10, 10, 1], [-10, 10, 10, 1]],
+    faces: [[0, 1, 2], [0, 2, 3], // Front
+            [4, 5, 1], [1, 5, 2], // Right
+            [4, 5, 0], [4, 0, 3], // Sides
+            [3, 2, 4], [2, 5, 4]] // Top
+};
 
 //VARIABLE INITIALIZATION
 let gravity = 0.1;
@@ -61,29 +141,9 @@ let cam = {
 
 let bullets = [];
 
+let placedObjects = [];
+
 let map = [{
-    name: "cube",
-    color: [120, 108, 155],
-    vertices: [[10, 10, 30, 1], [-10, 10, 30, 1], [-10, -10, 30, 1], [10, -10, 30, 1], //Front
-               [10, 10, 50, 1], [-10, 10, 50, 1], [-10, -10, 50, 1], [10, -10, 50, 1]], //Back
-    faces: [[0, 1, 2], [0, 2, 3], // Front
-            [1, 5, 6], [1, 6, 2], // Right
-            [5, 4, 7], [5, 7, 6], // Back
-            [4, 0, 3], [4, 3, 7], // Left
-            [3, 2, 6], [3, 6, 7], // Top
-            [4, 5, 1], [4, 1, 0]] // Bottom
-}, {
-    name: "cube",
-    color: [2, 7, 93],
-    vertices: [[30, 10, 30, 1], [20, 10, 30, 1], [20, -10, 30, 1], [30, -10, 30, 1], //Front
-               [30, 10, 50, 1], [20, 10, 50, 1], [20, -10, 50, 1], [30, -10, 50, 1]], //Back
-    faces: [[0, 1, 2], [0, 2, 3], // Front
-            [1, 5, 6], [1, 6, 2], // Right
-            [5, 4, 7], [5, 7, 6], // Back
-            [4, 0, 3], [4, 3, 7], // Left
-            [3, 2, 6], [3, 6, 7], // Top
-            [4, 5, 1], [4, 1, 0]]  // Bottom
-}, {
     name: "ground",
     color: [36, 36, 36],
     vertices: [[100, 20, -100, 1], [-100, 20, -100, 1], [-100, 10, -100, 1], [100, 10, -100, 1], //Front
@@ -94,44 +154,6 @@ let map = [{
             [4, 0, 3], [4, 3, 7], // Left
             [3, 2, 6], [3, 6, 7], // Top
             [4, 5, 1], [4, 1, 0]]  // Bottom
-}, {
-    name: "slant",
-    color: [0, 150, 60],
-    vertices: [[-30, 10, -40, 1], [-40, 10, -40, 1], [-40, 0, -40, 1], [-30, 0, -40, 1], 
-               [-30, 10, -10, 1], [-40, 10, -10, 1]],
-    faces: [[0, 1, 2], [0, 2, 3], // Front
-            [4, 5, 1], [1, 5, 2], // Right
-            [4, 5, 0], [4, 0, 3], // Top
-            [3, 2, 4], [2, 5, 4]] // Bottom
-}, {
-    name: "pyramid",
-    color: [200, 0, 0],
-    vertices: [[-10, 10, -40, 1], [-20, 10, -30, 1], [-10, 10, -20, 1], [0, 10, -30, 1], 
-               [-10, 0, -30, 1]],
-    faces: [[2, 1, 0], [3, 2, 0], // Bottom
-            [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]] // Sides
-}, {
-    name: "slanted box",
-    color: [200, 0, 200],
-    vertices: [[40, 10, -30, 1], [30, 10, -20, 1], [20, 10, -30, 1], [30, 10, -40, 1], //Front
-               [40, 0, -30, 1], [30, 0, -20, 1], [20, 0, -30, 1], [30, 0, -40, 1]],
-    faces: [[0, 1, 2], [0, 2, 3], // Frontw
-            [1, 5, 6], [1, 6, 2], // Right
-            [5, 4, 7], [5, 7, 6], // Back
-            [4, 0, 3], [4, 3, 7], // Left
-            [3, 2, 6], [3, 6, 7], // Top
-            [4, 5, 1], [4, 1, 0]] // Sides
-}, {
-    name: "box",
-    color: [0, 200, 200],
-    vertices: [[50, 10, 50, 1], [45, 10, 50, 1], [45, 5, 50, 1], [50, 5, 50, 1], //Front
-               [50, 10, 55, 1], [45, 10, 55, 1], [45, 5, 55, 1], [50, 5, 55, 1]],
-    faces: [[0, 1, 2], [0, 2, 3], // Front
-            [1, 5, 6], [1, 6, 2], // Right
-            [5, 4, 7], [5, 7, 6], // Back
-            [4, 0, 3], [4, 3, 7], // Left
-            [3, 2, 6], [3, 6, 7], // Top
-            [4, 5, 1], [4, 1, 0]] // Bottoma
 }]; 
 
 let enemies = [{
@@ -139,7 +161,7 @@ let enemies = [{
     health: 100,
     pos: [0, 0, 0],
     vel: [0, 0, 0],
-    speed: 0.5,
+    speed: 0.1,
     grounded: true,
     color: [100, 150, 150],
     vertices: [[2.5, 10, -2.5, 1], [-2.5, 10, -2.5, 1], [-2.5, 0, -2.5, 1], [2.5, 0, -2.5, 1], //Front
@@ -379,13 +401,31 @@ function draw(){
             );
         };
     };
+    let placedObjectFaces = [];
+    for (let i = 0; i < placedObjects.length; i++){
+        for(let f = 0; f < placedObjects[i].faces.length; f++){
+            placedObjectFaces.push(
+                [placedObjects[i].vertices[placedObjects[i].faces[f][0]],
+                placedObjects[i].vertices[placedObjects[i].faces[f][1]],
+                placedObjects[i].vertices[placedObjects[i].faces[f][2]], placedObjects[i].color]
+            );
+        };
+    };
     let faces = mapFaces.concat(enemyFaces);
+    faces = faces.concat(placedObjectFaces);
 
     background(64, 3, 3);    
     facesToRender = [];
     getCamPos();
     getKey();
-    checkCollisions(cam);
+    if(!editorMode){
+        checkCollisions(cam);
+        gravity = 0.1;
+        cam.speed = 0.5;
+    } else {
+        cam.speed = 1;
+        gravity = 0;
+    }
     movePlayer();
     camera = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
     if(shotTimer >= 0){
@@ -466,8 +506,16 @@ function getKey(){
         cam.vel[0] -= Math.cos(cam.yaw);
     }
     //SPACE
-    if(keyIsDown(32) && cam.grounded){
+    if(keyIsDown(32) && cam.grounded && !editorMode){
         cam.vel[1] = -2;
+    }
+    // EDITORMODE KEYS
+    if(keyIsDown(32) && !keyIsDown(16) && editorMode){
+        cam.vel[1] = -1;
+    } else if(keyIsDown(16) && !keyIsDown(32) && editorMode){
+        cam.vel[1] = 1;
+    } else if (((!keyIsDown(32) && !keyIsDown(16)) || (keyIsDown(32) && keyIsDown(16))) && editorMode){
+        cam.vel[1] = 0;
     }
 
     //SHIFT
@@ -498,6 +546,7 @@ function movePlayer(){
 function moveEnemies(){
     for (let i = 0; i < enemies.length; i++){
         enemies[i].vel = [0.1, 0, 0.1];
+        enemies[i].vel = doEnemyAI(enemies[i]);
         checkCollisions(enemies[i]);
         enemies[i].pos = addVector3(enemies[i].pos, enemies[i].vel);
         for (let j = 0; j < enemies[i].vertices.length; j++){
@@ -520,24 +569,47 @@ function showHealthbars(){
         let screenX = ((ndc[0] + 1)/2) * width;
         let screenY = ((1 - ndc[1])/2) * height;
 
+        let z = ndc[2] * 100;
+
         screenX = Math.max(50, Math.min(width - 50, screenX));
         screenY = Math.max(20, Math.min(height - 20, screenY));
+        if(enemyScreenPos2[2] < 0){
 
-        let gl = this._renderer.GL;
+            noStroke();
+            fill(255, 0, 0);
+            beginShape();
+            vertex(screenX - 50 - width/2, screenY - 20 - height/2-50, z);
+            vertex(screenX + 50 - width/2, screenY - 20 - height/2-50, z);
+            vertex(screenX + 50 - width/2, screenY - 10 - height/2-50, z);
+            vertex(screenX - 50 - width/2, screenY - 10 - height/2-50, z);
+            endShape(CLOSE);
 
-        gl.disable(gl.DEPTH_TEST);
+            // Draw health bar foreground
+            fill(0, 255, 0);
+            let healthWidth = (enemies[i].health / 100) * 100;
+            beginShape();
+            vertex(screenX - 50 - width/2, screenY - 20 - height/2-50, z);
+            vertex(screenX - 50 + healthWidth - width/2, screenY - 20 - height/2-50, z);
+            vertex(screenX - 50 + healthWidth - width/2, screenY - 10 - height/2-50, z);
+            vertex(screenX - 50 - width/2, screenY - 10 - height/2-50, z);
+            endShape(CLOSE);
 
-        noStroke();
-        fill(255, 0, 0);
-        rect(screenX - width/2 - 50, screenY - 100 - height/2, 100, 20);
-        fill(0, 255, 0);
-        rect(screenX - width/2 - 50, screenY - 100 - height/2, (enemies[i].health / 100) * 100, 20);
-
-        gl.enable(gl.DEPTH_TEST);
+        }
     }
 }
 
-function doEnemyAI(enemy){}
+function doEnemyAI(enemy) {
+    let directionToPlayer = subtractVector3(cam.pos, enemy.pos);
+
+    let normalizedDirection = normalize(directionToPlayer);
+
+    let newVel = [0, 0, 0];
+
+    newVel[0] = normalizedDirection[0] * enemy.speed;
+    newVel[2] = normalizedDirection[2] * enemy.speed;
+
+    return newVel;
+}
 
 function checkCollisions(entity){
     const COLLISION_OFFSET = 5;
@@ -795,7 +867,7 @@ function renderTriangles() {
     }
 }
 
-function castShot() {
+function castShot(distance) {
     const origin = cam.pos.slice(0, 3); // Camera position
     const direction = normalize([
         Math.cos(cam.pitch) * Math.sin(cam.yaw),
@@ -803,7 +875,7 @@ function castShot() {
         Math.cos(cam.pitch) * Math.cos(cam.yaw)
     ]); // Camera direction
 
-    const maxDistance = 1000; // Maximum ray distance
+    const maxDistance = distance; // Maximum ray distance
     const enemy = castRay(origin, direction, maxDistance);
 
     if (enemy != null) {
