@@ -2,6 +2,17 @@
 let paused = false;
 let editorMode = false;
 let placing = false;
+let blockPlacing;
+let sx = 1;
+let sy = 1;
+let sz = 1;
+let tx = 0;
+let ty = 0;
+let tz = 0;
+let rx = 0;
+let tMatrix;
+let rMatrix;
+
 document.addEventListener("keydown", (e) => {
     e.preventDefault();
     if (e.key === "q") {
@@ -12,22 +23,52 @@ document.addEventListener("keydown", (e) => {
             document.exitPointerLock();
         }
     }
-
+    
     if (e.key === "l") {
         editorMode = !editorMode;
         
     }
-
+    
     if(e.key === "c" && editorMode){
-        placedObjects.push(baseCube);
+        blockPlacing = baseCube;
+        placing = true;
+        let sx = 1;
+        let sy = 1;
+        let sz = 1;
+        let tx = 0;
+        let ty = 0;
+        let tz = 0;
+        let rx = 0;
+        let tMatrix;
+        let rMatrix;
     }
-
+    
     if(e.key === "p" && editorMode){
-        placedObjects.push(basePyramid);
+        blockPlacing = basePyramid;
+        placing = true;
+        let sx = 1;
+        let sy = 1;
+        let sz = 1;
+        let tx = 0;
+        let ty = 0;
+        let tz = 0;
+        let rx = 0;
+        let tMatrix;
+        let rMatrix;
     }
-
+    
     if(e.key === "v" && editorMode){
-        placedObjects.push(baseSlant);
+        blockPlacing = baseSlant;
+        placing = true;
+        let sx = 1;
+        let sy = 1;
+        let sz = 1;
+        let tx = 0;
+        let ty = 0;
+        let tz = 0;
+        let rx = 0;
+        let tMatrix;
+        let rMatrix;
     }
 });
 
@@ -43,6 +84,9 @@ document.addEventListener("click", (e) => {
     } else if(e.button == 2){
         enemy = castShot(10);
         damage = 20;
+        punch = true;
+        punchStarted = true;
+        punchTimer = punchDuration;
     }
     if(enemy != null){
         enemies[enemy].health -= damage;
@@ -52,7 +96,7 @@ document.addEventListener("click", (e) => {
         }
     }
 });
-        
+
 
 let baseEnemy = {
     name: "original",
@@ -63,35 +107,35 @@ let baseEnemy = {
     grounded: true,
     color: [100, 150, 150],
     vertices: [[2.5, 10, -2.5, 1], [-2.5, 10, -2.5, 1], [-2.5, 0, -2.5, 1], [2.5, 0, -2.5, 1], //Front
-               [2.5, 10, 2.5, 1], [-2.5, 10, 2.5, 1], [-2.5, 0, 2.5, 1], [2.5, 0, 2.5, 1]], //Back
+    [2.5, 10, 2.5, 1], [-2.5, 10, 2.5, 1], [-2.5, 0, 2.5, 1], [2.5, 0, 2.5, 1]], //Back
     faces: [[0, 1, 2], [0, 2, 3], // Front
-            [1, 5, 6], [1, 6, 2], // Right
-            [5, 4, 7], [5, 7, 6], // Back
-            [4, 0, 3], [4, 3, 7], // Left
-            [3, 2, 6], [3, 6, 7], // Top
-            [4, 5, 1], [4, 1, 0]] // Bottom
+    [1, 5, 6], [1, 6, 2], // Right
+    [5, 4, 7], [5, 7, 6], // Back
+    [4, 0, 3], [4, 3, 7], // Left
+    [3, 2, 6], [3, 6, 7], // Top
+    [4, 5, 1], [4, 1, 0]] // Bottom
 };
 
 let baseCube = {
     name: "cube",
-    color: [100, 170, 255],
+    color: [100, 150, 150],
     vertices: [[10, 10, -10, 1], [-10, 10, -10, 1], [-10, -10, -10, 1], [10, -10, -10, 1], //Front
-               [10, 10, 10, 1], [-10, 10, 10, 1], [-10, -10, 10, 1], [10, -10, 10, 1]], //Back
+    [10, 10, 10, 1], [-10, 10, 10, 1], [-10, -10, 10, 1], [10, -10, 10, 1]], //Back
     faces: [[0, 1, 2], [0, 2, 3], // Front
-            [1, 5, 6], [1, 6, 2], // Right
-            [5, 4, 7], [5, 7, 6], // Back
-            [4, 0, 3], [4, 3, 7], // Left
-            [3, 2, 6], [3, 6, 7], // Top
-            [4, 5, 1], [4, 1, 0]] // Bottom
+    [1, 5, 6], [1, 6, 2], // Right
+    [5, 4, 7], [5, 7, 6], // Back
+    [4, 0, 3], [4, 3, 7], // Left
+    [3, 2, 6], [3, 6, 7], // Top
+    [4, 5, 1], [4, 1, 0]] // Bottom
 };
 
 let basePyramid = {
     name: "pyramid",
-    color: [200, 0, 0],
+    color: [100, 150, 150],
     vertices: [[10, 10, 10, 1], [-10, 10, 10, 1], [-10, 10, -10, 1], [10, 10, -10, 1], 
-               [0, 0, 0, 1]],
+    [0, 0, 0, 1]],
     faces: [[0, 1, 2], [0, 2, 3], // Bottom
-            [4, 1, 0], [4, 2, 1], [4, 3, 2], [4, 0, 3]] // Sides
+    [4, 1, 0], [4, 2, 1], [4, 3, 2], [4, 0, 3]] // Sides
 };
 
 let baseSlant = {
@@ -99,17 +143,23 @@ let baseSlant = {
     color: [0, 150, 60],
     vertices: [[10, 10, -10, 1], [-10, 10, -10, 1], [-10, 0, -10, 1], [10, 0, -10, 1], 
                [10, 10, 10, 1], [-10, 10, 10, 1]],
-    faces: [[0, 1, 2], [0, 2, 3], // Front
-            [4, 5, 1], [1, 5, 2], // Right
-            [4, 5, 0], [4, 0, 3], // Sides
-            [3, 2, 4], [2, 5, 4]] // Top
+               faces: [[0, 1, 2], [0, 2, 3], // Front
+               [4, 5, 1], [1, 5, 2], // Right
+               [4, 5, 0], [4, 0, 3], // Sides
+               [3, 2, 4], [2, 5, 4]] // Top
 };
 
 //VARIABLE INITIALIZATION
 let gravity = 0.1;
+let handOverlay;
+let punchTimer = 0;
+let punch = false;
+let punchStarted = false;
+const punchDuration = 300;
 let shot = false;
 let shotTimer = 0;
 const shotDuration = 100;
+let punchOffset = 0;
 let fNear = 1;
 let fFar = 100;
 let fFov = Math.PI/3;
@@ -228,7 +278,6 @@ function multiplyVecMat(v, m){
         v[2] * m[i][2] +        
         v[3] * m[i][3];       
     }
-    
     return result;
 }
 
@@ -238,6 +287,17 @@ function multiplyMat3(a, b){
         result[i] = [];
         for(let j = 0; j < 3; j++){
             result[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
+        }
+    }
+    return result;
+}
+
+function multiplyMat4(a, b){
+    const result = [];
+    for (let i = 0; i < 4; i++){
+        result[i] = [];
+        for(let j = 0; j < 4; j++){
+            result[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j] + a[i][3] * b[3][j];
         }
     }
     return result;
@@ -361,6 +421,7 @@ function shouldCullFace(face){
 //P5 FUNCTIONS
 function preload(){
     gunOverlay = loadImage('/Sources/Images/gun.png');
+    handOverlay = loadImage('/Sources/Images/hand.png');
     shaderProgram = loadShader('./Shaders/vert.glsl', './Shaders/frag.glsl');
 }
 
@@ -425,11 +486,48 @@ function draw(){
     } else {
         cam.speed = 1;
         gravity = 0;
+
+        if(placing){
+            tMatrix = [[sx, 0, 0, tx],
+                       [0, sy, 0, ty],
+                       [0, 0, sz, tz],
+                       [0, 0, 0, 1]];
+            rMatrix = [[1, 0, 0, 0],
+                       [0, Math.cos(rx), -Math.sin(rx), 0],
+                       [0, Math.sin(rx), Math.cos(rx), 0],  
+                       [0, 0, 0, 1]];
+
+            let transformedShape = blockPlacing;
+            for(let i = 0; i < transformedShape.vertices.length; i++){
+                transformedShape.vertices[i] = multiplyVecMat(transformedShape.vertices[i], tMatrix);
+
+                transformedShape.vertices[i] = multiplyVecMat(transformedShape.vertices[i], rMatrix);
+            }
+            //console.log(transformedShape);
+
+            let placingObjectFaces = [];
+            for(let f = 0; f < transformedShape.faces.length; f++){
+                placingObjectFaces.push(
+                    [transformedShape.vertices[transformedShape.faces[f][0]],
+                    transformedShape.vertices[transformedShape.faces[f][1]],
+                    transformedShape.vertices[transformedShape.faces[f][2]], transformedShape.color]
+                );
+            };
+            faces = faces.concat(placingObjectFaces);
+        }
+    }
+    if(punchStarted){
+        punchOffset = 0;
+        punchStarted = false;
     }
     movePlayer();
     camera = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
     if(shotTimer >= 0){
         shotTimer -= deltaTime;
+    }
+
+    if(punchTimer >= 0){
+        punchTimer -= deltaTime;
     }
     
     //console.log("original: " + camera.length);
@@ -474,7 +572,19 @@ function draw(){
         shot = false;
     }
 
+
+    if(punchTimer > 0 && punchTimer < 150){
+        punchOffset -= 10;
+    } else if(punchTimer > 150 && punchTimer < punchDuration){
+        punchOffset += 10;
+    } else {
+        punch = false;
+        punchOffset = 0;
+    }
+
     image(gunOverlay, -width/6, -height/6, width/1.5, height/1.5);
+
+    image(handOverlay, -width*2/3 + punchOffset, -height/6 - punchOffset, width/1.5, height/1.25);
 
     // Re-enable depth test
     gl.enable(gl.DEPTH_TEST);
@@ -517,6 +627,69 @@ function getKey(){
     } else if (((!keyIsDown(32) && !keyIsDown(16)) || (keyIsDown(32) && keyIsDown(16))) && editorMode){
         cam.vel[1] = 0;
     }
+
+    if(keyIsDown(38) && editorMode && !keyIsDown(17)){
+        tz = 0.5;
+    } else if(keyIsDown(40) && editorMode && !keyIsDown(17)){
+        tz = -0.5;
+    } else {
+        tz = 0;
+    }
+    if(keyIsDown(37) && editorMode && !keyIsDown(17)){    
+        tx = 0.5;
+    } else if(keyIsDown(39) && editorMode && !keyIsDown(17)){
+        tx = -0.5;
+    } else {
+        tx = 0;
+    }
+    if(keyIsDown(78) && editorMode && !keyIsDown(17)){
+        ty = 0.5;
+    } else if(keyIsDown(77) && editorMode && !keyIsDown(17)){
+        ty = -0.5;
+    } else {
+        ty = 0;
+    }
+
+    let dsz = 0;
+    let dsx = 0;
+    let dsy = 0;
+
+
+    if(keyIsDown(38) && editorMode && keyIsDown(17)){
+        dsz = 0.1;
+    } else if(keyIsDown(40) && editorMode && keyIsDown(17)){
+        dsz = -0.1;
+    } else {
+        dsz = 0;
+    }
+    if(keyIsDown(37) && editorMode && keyIsDown(17)){    
+        dsx = 0.1;
+    } else if(keyIsDown(39) && editorMode && keyIsDown(17)){
+        dsx = -0.1;
+    } else {
+        dsx = 0;
+    }
+    if(keyIsDown(78) && editorMode && keyIsDown(17)){
+        dsy = 0.1;
+    } else if(keyIsDown(77) && editorMode && keyIsDown(17)){
+        dsy = -0.1;
+    } else {
+        dsy = 0;
+    }
+
+    if (!keyIsDown(38) && !keyIsDown(40)) {
+        dsz = 0;
+    }
+    if (!keyIsDown(37) && !keyIsDown(39)) {
+        dsx = 0;
+    }
+    if (!keyIsDown(78) && !keyIsDown(77)) {
+        dsy = 0;
+    }
+
+    sx += dsx;
+    sy += dsy;
+    sz += dsz;
 
     //SHIFT
     //if(keyIsDown(16)){
