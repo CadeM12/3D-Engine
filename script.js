@@ -3,7 +3,7 @@ let paused = false;
 let editorMode = false;
 let placing = false;
 let blockPlacing;
-let sx = 1;
+let sx = 1.1;
 let sy = 1;
 let sz = 1;
 let tx = 0;
@@ -32,43 +32,59 @@ document.addEventListener("keydown", (e) => {
     if(e.key === "c" && editorMode){
         blockPlacing = baseCube;
         placing = true;
-        let sx = 1;
-        let sy = 1;
-        let sz = 1;
-        let tx = 0;
-        let ty = 0;
-        let tz = 0;
-        let rx = 0;
-        let tMatrix;
-        let rMatrix;
+        sx = 1;
+        sy = 1;
+        sz = 1;
+        tx = 0;
+        ty = 0;
+        tz = 0;
+        rx = 0;
     }
     
     if(e.key === "p" && editorMode){
         blockPlacing = basePyramid;
         placing = true;
-        let sx = 1;
-        let sy = 1;
-        let sz = 1;
-        let tx = 0;
-        let ty = 0;
-        let tz = 0;
-        let rx = 0;
-        let tMatrix;
-        let rMatrix;
+        sx = 1;
+        sy = 1;
+        sz = 1;
+        tx = 0;
+        ty = 0;
+        tz = 0;
+        rx = 0;
     }
     
-    if(e.key === "v" && editorMode){
+    if(e.key === "o" && editorMode){
         blockPlacing = baseSlant;
         placing = true;
-        let sx = 1;
-        let sy = 1;
-        let sz = 1;
-        let tx = 0;
-        let ty = 0;
-        let tz = 0;
-        let rx = 0;
-        let tMatrix;
-        let rMatrix;
+        sx = 1;
+        sy = 1;
+        sz = 1;
+        tx = 0;
+        ty = 0;
+        tz = 0;
+        rx = 0;
+    }
+
+    if(e.key === "Enter" && editorMode && placing){
+        let newObject = JSON.parse(JSON.stringify(blockPlacing));
+        for(let i = 0; i < newObject.vertices.length; i++){
+            newObject.vertices[i] = multiplyVecMat(newObject.vertices[i], rMatrix);
+            newObject.vertices[i] = multiplyVecMat(newObject.vertices[i], tMatrix);
+        }
+        placedObjects.push(newObject);
+        placing = false;
+    }
+
+    if(e.key === "Alt" && editorMode){
+        let entireMap = map.concat(placedObjects);
+        const data = {
+            map: entireMap,
+            enemies: enemies
+        }
+
+        const jsonData = JSON.stringify(data, null, 2);
+
+        saveJSON(jsonData, './map.json');
     }
 });
 
@@ -421,7 +437,7 @@ function shouldCullFace(face){
 //P5 FUNCTIONS
 function preload(){
     gunOverlay = loadImage('/Sources/Images/gun.png');
-    handOverlay = loadImage('/Sources/Images/hand.png');
+    handOverlay = loadImage('/Sources/Images/hands.png');
     shaderProgram = loadShader('./Shaders/vert.glsl', './Shaders/frag.glsl');
 }
 
@@ -492,18 +508,16 @@ function draw(){
                        [0, sy, 0, ty],
                        [0, 0, sz, tz],
                        [0, 0, 0, 1]];
-            rMatrix = [[1, 0, 0, 0],
-                       [0, Math.cos(rx), -Math.sin(rx), 0],
-                       [0, Math.sin(rx), Math.cos(rx), 0],  
+            rMatrix = [[Math.cos(rx), 0, Math.sin(rx), 0],
+                       [0, 1, 0, 0],
+                       [-Math.sin(rx), 0, Math.cos(rx), 0],  
                        [0, 0, 0, 1]];
 
-            let transformedShape = blockPlacing;
+            let transformedShape = JSON.parse(JSON.stringify(blockPlacing));
             for(let i = 0; i < transformedShape.vertices.length; i++){
-                transformedShape.vertices[i] = multiplyVecMat(transformedShape.vertices[i], tMatrix);
-
                 transformedShape.vertices[i] = multiplyVecMat(transformedShape.vertices[i], rMatrix);
+                transformedShape.vertices[i] = multiplyVecMat(transformedShape.vertices[i], tMatrix);
             }
-            //console.log(transformedShape);
 
             let placingObjectFaces = [];
             for(let f = 0; f < transformedShape.faces.length; f++){
@@ -629,67 +643,42 @@ function getKey(){
     }
 
     if(keyIsDown(38) && editorMode && !keyIsDown(17)){
-        tz = 0.5;
+        tz += 0.5;
     } else if(keyIsDown(40) && editorMode && !keyIsDown(17)){
-        tz = -0.5;
-    } else {
-        tz = 0;
+        tz += -0.5;
     }
     if(keyIsDown(37) && editorMode && !keyIsDown(17)){    
-        tx = 0.5;
+        tx += 0.5;
     } else if(keyIsDown(39) && editorMode && !keyIsDown(17)){
-        tx = -0.5;
-    } else {
-        tx = 0;
+        tx += -0.5;
     }
-    if(keyIsDown(78) && editorMode && !keyIsDown(17)){
-        ty = 0.5;
-    } else if(keyIsDown(77) && editorMode && !keyIsDown(17)){
-        ty = -0.5;
-    } else {
-        ty = 0;
+    if(keyIsDown(66) && editorMode && !keyIsDown(17)){
+        ty += 0.5;
+    } else if(keyIsDown(86) && editorMode && !keyIsDown(17)){
+        ty += -0.5;
     }
-
-    let dsz = 0;
-    let dsx = 0;
-    let dsy = 0;
-
 
     if(keyIsDown(38) && editorMode && keyIsDown(17)){
-        dsz = 0.1;
+        sz += 0.1;
     } else if(keyIsDown(40) && editorMode && keyIsDown(17)){
-        dsz = -0.1;
-    } else {
-        dsz = 0;
+        sz -= 0.1;
     }
     if(keyIsDown(37) && editorMode && keyIsDown(17)){    
-        dsx = 0.1;
+        sx += 0.1;
     } else if(keyIsDown(39) && editorMode && keyIsDown(17)){
-        dsx = -0.1;
-    } else {
-        dsx = 0;
+        sx -= 0.1;
     }
-    if(keyIsDown(78) && editorMode && keyIsDown(17)){
-        dsy = 0.1;
-    } else if(keyIsDown(77) && editorMode && keyIsDown(17)){
-        dsy = -0.1;
-    } else {
-        dsy = 0;
+    if(keyIsDown(86) && editorMode && keyIsDown(17)){
+        sy += 0.1;
+    } else if(keyIsDown(66) && editorMode && keyIsDown(17)){
+        sy -= 0.1;
     }
 
-    if (!keyIsDown(38) && !keyIsDown(40)) {
-        dsz = 0;
+    if(keyIsDown(82) && editorMode && !keyIsDown(17)){
+        rx += 0.05;
+    } else if(keyIsDown(82) && editorMode && keyIsDown(17)){
+        rx -= 0.05;
     }
-    if (!keyIsDown(37) && !keyIsDown(39)) {
-        dsx = 0;
-    }
-    if (!keyIsDown(78) && !keyIsDown(77)) {
-        dsy = 0;
-    }
-
-    sx += dsx;
-    sy += dsy;
-    sz += dsz;
 
     //SHIFT
     //if(keyIsDown(16)){
@@ -1111,6 +1100,39 @@ function castRay(origin, direction, maxDistance) {
             }
         }
     }
+
+    if(editorMode){
+        let closestZappedBlockDistance = maxDistance;
+        let closestZappedIndex;
+        for (let i = 0; i < placedObjects.length; i++) {
+            const placedObject = placedObjects[i];
+
+            for (let face of placedObject.faces) {
+                const v1 = placedObject.vertices[face[0]];
+                const v2 = placedObject.vertices[face[1]];
+                const v3 = placedObject.vertices[face[2]];
+
+                const intersection = rayIntersectsTriangle(origin, direction, v1, v2, v3);
+
+                if (intersection) {
+                    const distance = Math.sqrt(
+                                                  Math.pow(intersection[0] - origin[0], 2) +
+                                                  Math.pow(intersection[1] - origin[1], 2) +
+                                                  Math.pow(intersection[2] - origin[2], 2)
+                                              );
+                    if (distance < closestDistance) {
+                        closestZappedBlockDistance = distance;
+                        closestZappedIndex = i;
+                    }
+                }
+            }
+        }
+        if(closestZappedIndex != null){
+            placedObjects.splice(closestZappedIndex, 1);
+        }
+        return null;
+    }
+
     if(closestIndex != null){
         return closestIndex;
     }
