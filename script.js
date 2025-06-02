@@ -12,6 +12,8 @@ let tz = 0;
 let rx = 0;
 let tMatrix;
 let rMatrix;
+const enemySpawnRate = 10000;
+let spawnTimer = 0;
 
 document.addEventListener("keydown", (e) => {
     e.preventDefault();
@@ -66,6 +68,10 @@ document.addEventListener("keydown", (e) => {
     }
 
     if(e.key === "Enter" && editorMode && placing){
+
+        //let blockcolor = prompt("Enter color for the object:", [36, 36, 36]);
+        //blockPlacing.color = blockcolor;
+
         let newObject = JSON.parse(JSON.stringify(blockPlacing));
         for(let i = 0; i < newObject.vertices.length; i++){
             newObject.vertices[i] = multiplyVecMat(newObject.vertices[i], rMatrix);
@@ -119,7 +125,7 @@ let baseEnemy = {
     health: 100,
     pos: [0, 0, 0],
     vel: [0, 0, 0],
-    speed: 0.1,
+    speed: 0.25,
     grounded: true,
     color: [100, 150, 150],
     vertices: [[2.5, 10, -2.5, 1], [-2.5, 10, -2.5, 1], [-2.5, 0, -2.5, 1], [2.5, 0, -2.5, 1], //Front
@@ -435,10 +441,21 @@ function shouldCullFace(face){
 //END TOOLS
 
 //P5 FUNCTIONS
-function preload(){
+async function preload(){
     gunOverlay = loadImage('/Sources/Images/gun.png');
     handOverlay = loadImage('/Sources/Images/hands.png');
     shaderProgram = loadShader('./Shaders/vert.glsl', './Shaders/frag.glsl');
+    try {
+        let mapData = await fetch('./_map.json');
+        if (!mapData.ok) {
+            throw new Error(`Failed to fetch map data: ${mapData.statusText}`);
+        }
+        let mapJson = await mapData.json();
+        map = JSON.parse(mapJson).map;
+        console.log("Map loaded successfully");
+    } catch (error) {
+        console.error("Error loading map:", error);
+    }
 }
 
 function setup(){
@@ -468,6 +485,13 @@ function setup(){
 
 function draw(){
     moveEnemies();
+
+    spawnTimer += deltaTime;
+    if(spawnTimer >= enemySpawnRate){
+        spawnTimer = 0;
+        enemies.push(JSON.parse(JSON.stringify(baseEnemy)));
+    }
+
     let enemyFaces = [];
     for (let i = 0; i < enemies.length; i++){
         for(let f = 0; f < enemies[i].faces.length; f++){
