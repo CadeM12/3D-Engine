@@ -126,7 +126,8 @@ let baseEnemy = {
     pos: [0, 0, 0],
     vel: [0, 0, 0],
     speed: 0.25,
-    grounded: true,
+    grounded: false,
+    collisionOffset: 7,
     color: [100, 150, 150],
     vertices: [[2.5, 10, -2.5, 1], [-2.5, 10, -2.5, 1], [-2.5, 0, -2.5, 1], [2.5, 0, -2.5, 1], //Front
     [2.5, 10, 2.5, 1], [-2.5, 10, 2.5, 1], [-2.5, 0, 2.5, 1], [2.5, 0, 2.5, 1]], //Back
@@ -206,7 +207,8 @@ let cam = {
     sensetivity: 200,
     vel: [0, 0, 0],
     speed: 0.5,
-    grounded: true
+    grounded: true,
+    collisionOffset: 5
 };
 
 //MAP
@@ -233,8 +235,9 @@ let enemies = [{
     health: 100,
     pos: [0, 0, 0],
     vel: [0, 0, 0],
-    speed: 0.1,
+    speed: 0.25,
     grounded: true,
+    collisionOffset: 7,
     color: [100, 150, 150],
     vertices: [[2.5, 10, -2.5, 1], [-2.5, 10, -2.5, 1], [-2.5, 0, -2.5, 1], [2.5, 0, -2.5, 1], //Front
                [2.5, 10, 2.5, 1], [-2.5, 10, 2.5, 1], [-2.5, 0, 2.5, 1], [2.5, 0, 2.5, 1]], //Back
@@ -731,8 +734,8 @@ function movePlayer(){
 
 function moveEnemies(){
     for (let i = 0; i < enemies.length; i++){
-        enemies[i].vel = [0.1, 0, 0.1];
         enemies[i].vel = doEnemyAI(enemies[i]);
+        enemies[i].vel[1] += gravity;
         checkCollisions(enemies[i]);
         enemies[i].pos = addVector3(enemies[i].pos, enemies[i].vel);
         for (let j = 0; j < enemies[i].vertices.length; j++){
@@ -789,7 +792,7 @@ function doEnemyAI(enemy) {
 
     let normalizedDirection = normalize(directionToPlayer);
 
-    let newVel = [0, 0, 0];
+    let newVel = [0, enemy.vel[1], 0];
 
     newVel[0] = normalizedDirection[0] * enemy.speed;
     newVel[2] = normalizedDirection[2] * enemy.speed;
@@ -798,13 +801,15 @@ function doEnemyAI(enemy) {
 }
 
 function checkCollisions(entity){
-    const COLLISION_OFFSET = 5;
+    const COLLISION_OFFSET = entity.collisionOffset; // Default to 5 if not specified
     const GROUND_THRESHOLD = 0.7;
+    const STEP_HEIGHT = COLLISION_OFFSET - 3;
     let isGrounded = false;
  
     for (let i = 0; i < map.length; i++){
         let crossingNormal = [0, 0, 0];
         let insidePlanes = 0;
+        let step = false;
         for (let face = 0; face < map[i].faces.length; face++){
             let plane = [
                 map[i].vertices[map[i].faces[face][0]], 
@@ -823,6 +828,11 @@ function checkCollisions(entity){
             let nextPosFoot = addVector3(footPos, entity.vel);
             //let nextPosHead = addVector3(headPos, entity.vel);
             let dFoot = distance(nextPosFoot, planePoint, planeNormal);
+
+            if(distance(addVector3([entity.pos[0], entity.pos[1] + STEP_HEIGHT, entity.pos[2]], entity.vel), planePoint, planeNormal) < -2){
+                step = true;
+            }
+
             //let dHead = distance(nextPosHead, planePoint, planeNormal);
             if(dFoot >= -2){
                 insidePlanes++;
@@ -835,8 +845,22 @@ function checkCollisions(entity){
             let normalVelocity = dotProduct(entity.vel, crossingNormal);
             let newVel = subtractVector3(entity.vel, crossingNormal.map(val => val * normalVelocity));
             entity.vel = newVel;
+
+            if(step && crossingNormal[1] < GROUND_THRESHOLD && entity.grounded){
+                if(entity == cam){
+                    entity.pos[1] -= STEP_HEIGHT;
+                }
+                entity.pos[1] -= STEP_HEIGHT;
+                if(entity != cam){
+                    for(let j = 0; j < entity.vertices.length; j++){
+                        entity.vertices[j][1] -= STEP_HEIGHT;
+                    }
+                }
+            }
+
             if(crossingNormal[1] > GROUND_THRESHOLD){
                 isGrounded = true;
+
                 let gravityComponent = [0, gravity, 0];
                 let normalComponent = dotProduct(gravityComponent, crossingNormal);
                 let projectedGravity = subtractVector3(gravityComponent, crossingNormal.map(val => val * normalComponent));
