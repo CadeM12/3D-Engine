@@ -3,6 +3,8 @@ let paused = false;
 let editorMode = false;
 let placing = false;
 let blockPlacing;
+const maxEnemies = 5;
+let enemiesCount = 0;
 let sx = 1.1;
 let sy = 1;
 let sz = 1;
@@ -115,6 +117,7 @@ document.addEventListener("click", (e) => {
         if(enemies[enemy].health <= 0){
             console.log("Enemy: " + enemy + " killed");
             enemies.splice(enemy, 1);
+            enemiesCount--;
         }
     }
 });
@@ -490,8 +493,9 @@ function draw(){
     moveEnemies();
 
     spawnTimer += deltaTime;
-    if(spawnTimer >= enemySpawnRate){
+    if(spawnTimer >= enemySpawnRate && enemiesCount < maxEnemies){
         spawnTimer = 0;
+        enemiesCount++;
         enemies.push(JSON.parse(JSON.stringify(baseEnemy)));
     }
 
@@ -792,6 +796,10 @@ function doEnemyAI(enemy) {
 
     let normalizedDirection = normalize(directionToPlayer);
 
+    if(Math.sqrt((enemy.pos[0] - cam.pos[0])**2 + (enemy.pos[2] - cam.pos[2])**2) < 5){
+        return [0, 0, 0]; // Enemy is too far away, do not move'
+    }
+
     let newVel = [0, enemy.vel[1], 0];
 
     newVel[0] = normalizedDirection[0] * enemy.speed;
@@ -805,16 +813,18 @@ function checkCollisions(entity){
     const GROUND_THRESHOLD = 0.7;
     const STEP_HEIGHT = COLLISION_OFFSET - 3;
     let isGrounded = false;
+
+    collidingFaces = map.concat(enemies);
  
-    for (let i = 0; i < map.length; i++){
+    for (let i = 0; i < collidingFaces.length; i++){
         let crossingNormal = [0, 0, 0];
         let insidePlanes = 0;
         let step = false;
-        for (let face = 0; face < map[i].faces.length; face++){
+        for (let face = 0; face < collidingFaces[i].faces.length; face++){
             let plane = [
-                map[i].vertices[map[i].faces[face][0]], 
-                map[i].vertices[map[i].faces[face][1]], 
-                map[i].vertices[map[i].faces[face][2]]
+                collidingFaces[i].vertices[collidingFaces[i].faces[face][0]], 
+                collidingFaces[i].vertices[collidingFaces[i].faces[face][1]], 
+                collidingFaces[i].vertices[collidingFaces[i].faces[face][2]]
             ];
          
             let planeNormal = normalize(crossProduct(
@@ -841,7 +851,7 @@ function checkCollisions(entity){
                 }
             }
         }
-        if(insidePlanes == map[i].faces.length){
+        if(insidePlanes == collidingFaces[i].faces.length){
             let normalVelocity = dotProduct(entity.vel, crossingNormal);
             let newVel = subtractVector3(entity.vel, crossingNormal.map(val => val * normalVelocity));
             entity.vel = newVel;
