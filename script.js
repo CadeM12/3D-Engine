@@ -4,6 +4,7 @@ let editorMode = false;
 let placing = false;
 let blockPlacing;
 const maxEnemies = 5;
+const attackTimer = 1000;
 let enemiesCount = 0;
 let sx = 1.1;
 let sy = 1;
@@ -130,6 +131,7 @@ let baseEnemy = {
     vel: [0, 0, 0],
     speed: 0.25,
     grounded: false,
+    attackTimer: 0,
     collisionOffset: 7,
     color: [100, 150, 150],
     vertices: [[2.5, 10, -2.5, 1], [-2.5, 10, -2.5, 1], [-2.5, 0, -2.5, 1], [2.5, 0, -2.5, 1], //Front
@@ -207,6 +209,7 @@ let cam = {
     pos: [0, 0, -15, 1],
     yaw: 0,
     pitch: 0,
+    health: 100,
     sensetivity: 200,
     vel: [0, 0, 0],
     speed: 0.5,
@@ -236,6 +239,7 @@ let map = [{
 let enemies = [{
     name: "original",
     health: 100,
+    attackTimer: 0,
     pos: [0, 0, 0],
     vel: [0, 0, 0],
     speed: 0.25,
@@ -604,6 +608,11 @@ function draw(){
 
     // Draw the rect in front of everything
     rect(-2.5, -2.5, 5, 5);
+    noStroke();
+    fill(255, 0, 0);
+    rect(-width/2 + 10, -height/2 + 10, width/2 - 20, 20);
+    fill(0, 255, 0);
+    rect(-width/2 + 10, -height/2 + 10, (width/2 - 20) * (cam.health / 100), 20);
     noFill();
     noStroke();
     
@@ -797,6 +806,12 @@ function doEnemyAI(enemy) {
     let normalizedDirection = normalize(directionToPlayer);
 
     if(Math.sqrt((enemy.pos[0] - cam.pos[0])**2 + (enemy.pos[2] - cam.pos[2])**2) < 5){
+        if(enemy.attackTimer <= 0){
+            cam.health -= 10;
+            enemy.attackTimer = 1000; // Reset attack timer
+        } else {
+            enemy.attackTimer -= deltaTime;
+        }
         return [0, 0, 0]; // Enemy is too far away, do not move'
     }
 
