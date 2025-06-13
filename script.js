@@ -1,11 +1,19 @@
 //PAUSE GAME WITH Q
-let paused = false;
+let paused = true;
 let editorMode = false;
 let placing = false;
+let died = false;
 let blockPlacing;
 const maxEnemies = 5;
 const attackTimer = 1000;
 let enemiesCount = 0;
+let started = false;
+let oofSound;
+let pewSound;
+let punchSound;
+let gameOverSound;
+let explosionSound;
+let font;
 let sx = 1.1;
 let sy = 1;
 let sz = 1;
@@ -22,10 +30,14 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     if (e.key === "q") {
         paused = !paused;
+        if(died){
+            died = false;
+        }
+        started = true;
         if(paused){
-            document.body.requestPointerLock();
-        } else {
             document.exitPointerLock();
+        } else {
+            document.body.requestPointerLock();
         }
     }
     
@@ -102,11 +114,19 @@ document.addEventListener("click", (e) => {
     let enemy = null;
     let damage = 0;
     if(e.button == 0){
+        if(!paused && !died){
+            pewSound.pause();
+            pewSound.currentTime = 0;
+            pewSound.play();
+        }
         enemy = castShot(1000);
         damage = 10;
         shot = true;
         shotTimer = shotDuration;
     } else if(e.button == 2){
+        punchSound.pause();
+        punchSound.currentTime = 0;
+        punchSound.play();
         enemy = castShot(10);
         damage = 20;
         punch = true;
@@ -116,6 +136,9 @@ document.addEventListener("click", (e) => {
     if(enemy != null){
         enemies[enemy].health -= damage;
         if(enemies[enemy].health <= 0){
+            explosionSound.pause();
+            explosionSound.currentTime = 0;
+            explosionSound.play();
             console.log("Enemy: " + enemy + " killed");
             enemies.splice(enemy, 1);
             enemiesCount--;
@@ -452,6 +475,12 @@ function shouldCullFace(face){
 
 //P5 FUNCTIONS
 async function preload(){
+    explosionSound = document.getElementById('explosionSound');
+    oofSound = document.getElementById('oofSound');
+    pewSound = document.getElementById('pewSound');
+    punchSound = document.getElementById('punchSound');
+    gameOverSound = document.getElementById('gameOverSound');
+    font = loadFont('/Doom2016Text-GOlBq.ttf');
     gunOverlay = loadImage('/Sources/Images/gun.png');
     handOverlay = loadImage('/Sources/Images/hands.png');
     shaderProgram = loadShader('./Shaders/vert.glsl', './Shaders/frag.glsl');
@@ -494,154 +523,218 @@ function setup(){
 }
 
 function draw(){
-    moveEnemies();
+    if(!paused && !died){
+        moveEnemies();
 
-    spawnTimer += deltaTime;
-    if(spawnTimer >= enemySpawnRate && enemiesCount < maxEnemies){
-        spawnTimer = 0;
-        enemiesCount++;
-        enemies.push(JSON.parse(JSON.stringify(baseEnemy)));
-    }
+        spawnTimer += deltaTime;
+        if(spawnTimer >= enemySpawnRate && enemiesCount < maxEnemies){
+            spawnTimer = 0;
+            enemiesCount++;
+            enemies.push(JSON.parse(JSON.stringify(baseEnemy)));
+        }
 
-    let enemyFaces = [];
-    for (let i = 0; i < enemies.length; i++){
-        for(let f = 0; f < enemies[i].faces.length; f++){
-            enemyFaces.push(
-                [enemies[i].vertices[enemies[i].faces[f][0]],
-                enemies[i].vertices[enemies[i].faces[f][1]],
-                enemies[i].vertices[enemies[i].faces[f][2]], enemies[i].color]
-            );
-        };
-    };
-    let placedObjectFaces = [];
-    for (let i = 0; i < placedObjects.length; i++){
-        for(let f = 0; f < placedObjects[i].faces.length; f++){
-            placedObjectFaces.push(
-                [placedObjects[i].vertices[placedObjects[i].faces[f][0]],
-                placedObjects[i].vertices[placedObjects[i].faces[f][1]],
-                placedObjects[i].vertices[placedObjects[i].faces[f][2]], placedObjects[i].color]
-            );
-        };
-    };
-    let faces = mapFaces.concat(enemyFaces);
-    faces = faces.concat(placedObjectFaces);
-
-    background(64, 3, 3);    
-    facesToRender = [];
-    getCamPos();
-    getKey();
-    if(!editorMode){
-        checkCollisions(cam);
-        gravity = 0.1;
-        cam.speed = 0.5;
-    } else {
-        cam.speed = 1;
-        gravity = 0;
-
-        if(placing){
-            tMatrix = [[sx, 0, 0, tx],
-                       [0, sy, 0, ty],
-                       [0, 0, sz, tz],
-                       [0, 0, 0, 1]];
-            rMatrix = [[Math.cos(rx), 0, Math.sin(rx), 0],
-                       [0, 1, 0, 0],
-                       [-Math.sin(rx), 0, Math.cos(rx), 0],  
-                       [0, 0, 0, 1]];
-
-            let transformedShape = JSON.parse(JSON.stringify(blockPlacing));
-            for(let i = 0; i < transformedShape.vertices.length; i++){
-                transformedShape.vertices[i] = multiplyVecMat(transformedShape.vertices[i], rMatrix);
-                transformedShape.vertices[i] = multiplyVecMat(transformedShape.vertices[i], tMatrix);
-            }
-
-            let placingObjectFaces = [];
-            for(let f = 0; f < transformedShape.faces.length; f++){
-                placingObjectFaces.push(
-                    [transformedShape.vertices[transformedShape.faces[f][0]],
-                    transformedShape.vertices[transformedShape.faces[f][1]],
-                    transformedShape.vertices[transformedShape.faces[f][2]], transformedShape.color]
+        let enemyFaces = [];
+        for (let i = 0; i < enemies.length; i++){
+            for(let f = 0; f < enemies[i].faces.length; f++){
+                enemyFaces.push(
+                    [enemies[i].vertices[enemies[i].faces[f][0]],
+                    enemies[i].vertices[enemies[i].faces[f][1]],
+                    enemies[i].vertices[enemies[i].faces[f][2]], enemies[i].color]
                 );
             };
-            faces = faces.concat(placingObjectFaces);
+        };
+        let placedObjectFaces = [];
+        for (let i = 0; i < placedObjects.length; i++){
+            for(let f = 0; f < placedObjects[i].faces.length; f++){
+                placedObjectFaces.push(
+                    [placedObjects[i].vertices[placedObjects[i].faces[f][0]],
+                    placedObjects[i].vertices[placedObjects[i].faces[f][1]],
+                    placedObjects[i].vertices[placedObjects[i].faces[f][2]], placedObjects[i].color]
+                );
+            };
+        };
+        let faces = mapFaces.concat(enemyFaces);
+        faces = faces.concat(placedObjectFaces);
+
+        background(64, 3, 3);    
+        facesToRender = [];
+        getCamPos();
+        getKey();
+        if(!editorMode){
+            checkCollisions(cam);
+            gravity = 0.1;
+            cam.speed = 0.5;
+        } else {
+            cam.speed = 1;
+            gravity = 0;
+
+            if(placing){
+                tMatrix = [[sx, 0, 0, tx],
+                           [0, sy, 0, ty],
+                           [0, 0, sz, tz],
+                           [0, 0, 0, 1]];
+                rMatrix = [[Math.cos(rx), 0, Math.sin(rx), 0],
+                           [0, 1, 0, 0],
+                           [-Math.sin(rx), 0, Math.cos(rx), 0],  
+                           [0, 0, 0, 1]];
+
+                let transformedShape = JSON.parse(JSON.stringify(blockPlacing));
+                for(let i = 0; i < transformedShape.vertices.length; i++){
+                    transformedShape.vertices[i] = multiplyVecMat(transformedShape.vertices[i], rMatrix);
+                    transformedShape.vertices[i] = multiplyVecMat(transformedShape.vertices[i], tMatrix);
+                }
+
+                let placingObjectFaces = [];
+                for(let f = 0; f < transformedShape.faces.length; f++){
+                    placingObjectFaces.push(
+                        [transformedShape.vertices[transformedShape.faces[f][0]],
+                        transformedShape.vertices[transformedShape.faces[f][1]],
+                        transformedShape.vertices[transformedShape.faces[f][2]], transformedShape.color]
+                    );
+                };
+                faces = faces.concat(placingObjectFaces);
+            }
+        }
+        if(punchStarted){
+            punchOffset = 0;
+            punchStarted = false;
+        }
+        movePlayer();
+        camera = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
+        if(shotTimer >= 0){
+            shotTimer -= deltaTime;
+        }
+
+        if(punchTimer >= 0){
+            punchTimer -= deltaTime;
+        }
+
+        //console.log("original: " + camera.length);
+        //console.log("flattened: " + flattenMatrix(camera).length);
+
+        //shader(shaderProgram);
+
+        //shaderProgram.setUniform('uProjectionMatrix', flattenMatrix(projMat));
+        //shaderProgram.setUniform('uViewMatrix', flattenMatrix(camera));
+        //shaderProgram.setUniform('uLightPos', cam.pos.slice(0, 3));
+        //shaderProgram.setUniform('uLightColor', [1.0, 1.0, 1.0]);
+        //shaderProgram.setUniform('uAmbientColor', [0.2, 0.2, 0.2]);
+
+        for (let i = 0; i < faces.length; i++){
+            //prepareFace([faces[i][0], faces[i][1], faces[i][2]], faces[i][3]);
+            transformFace([faces[i][0], faces[i][1], faces[i][2]], camera, projMat, width, height, faces[i][3]);
+        }
+
+        renderTriangles();
+
+        showHealthbars();
+
+        stroke("white");
+        strokeWeight(1);
+        fill(0, 0, 0, 0)
+
+        let gl = this._renderer.GL;
+        gl.disable(gl.DEPTH_TEST);
+
+        // Draw the rect in front of everything
+        rect(-2.5, -2.5, 5, 5);
+        noStroke();
+        fill(255, 0, 0);
+        rect(-width/2 + 10, -height/2 + 10, width/2 - 20, 20);
+        fill(0, 255, 0);
+        rect(-width/2 + 10, -height/2 + 10, (width/2 - 20) * (cam.health / 100), 20);
+        noFill();
+        noStroke();
+
+        if(shotTimer > 0){
+            stroke(42, 245, 255);
+            strokeWeight(5);
+            line(0, 0, width / 4, height / 4.3);
+            line(0, 0, width / 4, height / 4.3 - 5);
+            line(0, 0, width / 4, height / 4.3 - 10);
+        } else {
+            shot = false;
+        }
+
+
+        if(punchTimer > 0 && punchTimer < 150){
+            punchOffset -= 10;
+        } else if(punchTimer > 150 && punchTimer < punchDuration){
+            punchOffset += 10;
+        } else {
+            punch = false;
+            punchOffset = 0;
+        }
+
+        image(gunOverlay, -width/6, -height/6, width/1.5, height/1.5);
+
+        image(handOverlay, -width*2/3 + punchOffset, -height/6 - punchOffset, width/1.5, height/1.25);
+
+        // Re-enable depth test
+        gl.enable(gl.DEPTH_TEST);
+
+        if(cam.health <= 0){
+            document.exitPointerLock();
+            gameOverSound.pause();
+            gameOverSound.currentTime = 0;
+            gameOverSound.play();
+            died = true;
+            paused = true;
+            cam.health = 100;
+            cam.pos = [0, 0, -15, 1];
+            cam.vel = [0, 0, 0];
+            enemiesCount = 0;
+            enemies = [];
+            placedObjects = [];
+            facesToRender = [];
+            spawnTimer = 0;
+        }
+
+
+        // Draw pause screen
+    }
+    else {
+        if(!started){
+            let gl = this._renderer.GL;
+            gl.disable(gl.DEPTH_TEST);
+            background(160, 160, 160)
+            textFont(font);
+            fill(0);
+            stroke(0);
+            textSize(200);
+            text("START GAME", -300, 0);
+            textSize(75);
+            text("PRESS Q TO START", -150, 100);
+    
+            gl.enable(gl.DEPTH_TEST);
+        } else if (started && !died) {
+            let gl = this._renderer.GL;
+            gl.disable(gl.DEPTH_TEST);
+    
+            textFont(font);
+            fill(0);
+            textSize(200);
+            //textAlign(CENTER, CENTER);
+            text("GAME PAUSED", -300, 0);
+            textSize(75);
+            text("PRESS Q TO RESUME", -150, 100);
+    
+            gl.enable(gl.DEPTH_TEST);
+        } else if (died) {
+            let gl = this._renderer.GL;
+            gl.disable(gl.DEPTH_TEST);
+    
+            textFont(font);
+            fill(0);
+            textSize(200);
+            //textAlign(CENTER, CENTER);
+            text("YOU DIED", -300, 0);
+            textSize(75);
+            text("PRESS Q TO RESTART", -150, 100);
+    
+            gl.enable(gl.DEPTH_TEST);
         }
     }
-    if(punchStarted){
-        punchOffset = 0;
-        punchStarted = false;
-    }
-    movePlayer();
-    camera = createCameraMatrix(cam.pos, cam.pitch, cam.yaw);
-    if(shotTimer >= 0){
-        shotTimer -= deltaTime;
-    }
-
-    if(punchTimer >= 0){
-        punchTimer -= deltaTime;
-    }
-    
-    //console.log("original: " + camera.length);
-    //console.log("flattened: " + flattenMatrix(camera).length);
-    
-    //shader(shaderProgram);
-    
-    //shaderProgram.setUniform('uProjectionMatrix', flattenMatrix(projMat));
-    //shaderProgram.setUniform('uViewMatrix', flattenMatrix(camera));
-    //shaderProgram.setUniform('uLightPos', cam.pos.slice(0, 3));
-    //shaderProgram.setUniform('uLightColor', [1.0, 1.0, 1.0]);
-    //shaderProgram.setUniform('uAmbientColor', [0.2, 0.2, 0.2]);
-    
-    for (let i = 0; i < faces.length; i++){
-        //prepareFace([faces[i][0], faces[i][1], faces[i][2]], faces[i][3]);
-        transformFace([faces[i][0], faces[i][1], faces[i][2]], camera, projMat, width, height, faces[i][3]);
-    }
-    
-    renderTriangles();
-
-    showHealthbars();
-
-    stroke("white");
-    strokeWeight(1);
-    fill(0, 0, 0, 0)
-
-    let gl = this._renderer.GL;
-    gl.disable(gl.DEPTH_TEST);
-
-    // Draw the rect in front of everything
-    rect(-2.5, -2.5, 5, 5);
-    noStroke();
-    fill(255, 0, 0);
-    rect(-width/2 + 10, -height/2 + 10, width/2 - 20, 20);
-    fill(0, 255, 0);
-    rect(-width/2 + 10, -height/2 + 10, (width/2 - 20) * (cam.health / 100), 20);
-    noFill();
-    noStroke();
-    
-    if(shotTimer > 0){
-        stroke(42, 245, 255);
-        strokeWeight(5);
-        line(0, 0, width / 4, height / 4.3);
-        line(0, 0, width / 4, height / 4.3 - 5);
-        line(0, 0, width / 4, height / 4.3 - 10);
-    } else {
-        shot = false;
-    }
-
-
-    if(punchTimer > 0 && punchTimer < 150){
-        punchOffset -= 10;
-    } else if(punchTimer > 150 && punchTimer < punchDuration){
-        punchOffset += 10;
-    } else {
-        punch = false;
-        punchOffset = 0;
-    }
-
-    image(gunOverlay, -width/6, -height/6, width/1.5, height/1.5);
-
-    image(handOverlay, -width*2/3 + punchOffset, -height/6 - punchOffset, width/1.5, height/1.25);
-
-    // Re-enable depth test
-    gl.enable(gl.DEPTH_TEST);
 
 }
 
@@ -807,6 +900,9 @@ function doEnemyAI(enemy) {
 
     if(Math.sqrt((enemy.pos[0] - cam.pos[0])**2 + (enemy.pos[2] - cam.pos[2])**2) < 5){
         if(enemy.attackTimer <= 0){
+            oofSound.pause();
+            oofSound.currentTime = 0;
+            oofSound.play();
             cam.health -= 10;
             enemy.attackTimer = 1000; // Reset attack timer
         } else {
